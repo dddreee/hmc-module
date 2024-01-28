@@ -1,6 +1,7 @@
 ﻿#include "./hmc_shell_util.h"
 #include "./hmc_windows_util.h"
 #include "./hmc_string_util.h"
+#include "./hmc_util.h"
 
 // ?GetTaryIconList
 
@@ -397,8 +398,8 @@ int hmc_shell_util::ShellOpen::openUrl(std::wstring Url, bool isCurrentBrowser)
 
     // if (!isCurrentBrowser)
     // {
-        HINSTANCE hResult = ShellExecuteW(NULL, L"open", Url.c_str(), NULL, NULL, SW_SHOWNORMAL);
-        result = (int)(UINT_PTR)hResult;
+    HINSTANCE hResult = ShellExecuteW(NULL, L"open", Url.c_str(), NULL, NULL, SW_SHOWNORMAL);
+    result = (int)(UINT_PTR)hResult;
     // }
 
     return result;
@@ -748,75 +749,6 @@ bool hmc_shell_util::moveFile(const std::wstring &filePath, const std::wstring &
     return fileOperation == 0;
 }
 
-bool hmc_shell_util::getThumbnailPngFile(const std::wstring source, const std::wstring target, int size)
-{
-    std::vector<uint8_t> result = getThumbnailPng(source, size);
-    if (!result.empty())
-    {
-        std::ofstream OutFile(target.c_str(), std::ofstream::ios_base::trunc);
-
-        if (!OutFile.is_open())
-        {
-            return false;
-        }
-
-        OutFile.write(reinterpret_cast<char *>(result.data()), result.size());
-
-        if (OutFile.fail())
-        {
-            OutFile.close();
-            return false;
-        }
-
-        OutFile.close();
-        return true;
-    }
-
-    return false;
-}
-
-std::vector<std::uint8_t> hmc_shell_util::getThumbnailPng(const std::wstring source, int size)
-{
-    std::vector<std::uint8_t> result;
-    HRESULT tmep_CoInit = ::CoInitialize(NULL);
-    IShellItemImageFactory *itemImageFactory;
-    HBITMAP bitmap;
-    SIZE s = {size, size};
-    if (SUCCEEDED(::SHCreateItemFromParsingName(source.c_str(), NULL, IID_PPV_ARGS(&itemImageFactory))))
-    {
-        itemImageFactory->GetImage(s, SIIGBF_ICONONLY, &bitmap);
-        itemImageFactory->Release();
-    }
-
-    if (tmep_CoInit > 0)
-    {
-        ::CoUninitialize();
-    }
-
-    if (NULL == &bitmap)
-    {
-        return result;
-    }
-
-    BITMAP bmp;
-    HDC hdc;
-    // 获取位图信息
-    ::GetObject(bitmap, sizeof(bmp), &bmp);
-
-    // 确定像素数据的大小
-    result.resize(bmp.bmWidthBytes * bmp.bmHeight);
-
-    // 设备上下文
-    hdc = ::GetDC(NULL);
-
-    ::GetDIBits(hdc, bitmap, 0, bmp.bmHeight, result.data(), (BITMAPINFO *)&bmp, DIB_RGB_COLORS);
-
-    // 释放设备上下文
-    ::ReleaseDC(NULL, hdc);
-
-    return result;
-}
-
 bool hmc_shell_util::SetFolderIcon(const std::wstring &folderPath, const std::wstring &iconPath, int iconIndex)
 {
 
@@ -1089,6 +1021,170 @@ bool hmc_shell_util::Symlink::createHardLink(const std::wstring &targetPath, con
 bool hmc_shell_util::Symlink::createSymbolicLink(const std::wstring &targetPath, const std::wstring &sourcePath)
 {
     return CreateSymbolicLinkW(targetPath.c_str(), sourcePath.c_str(), SYMBOLIC_LINK_FLAG_DIRECTORY);
+}
+
+int hmc_shell_util::GetThumbnail::GetEncoderClsid(const WCHAR *format, CLSID *pClsid)
+{
+    UINT num = 0;  // number of image encoders
+    UINT size = 0; // size of the image encoder array in bytes
+
+    Gdiplus::GetImageEncodersSize(&num, &size);
+
+    if (size == NULL)
+        return -1; // Failure
+
+    auto pImageCodecInfo = VcRef<Gdiplus::ImageCodecInfo>(size);
+
+    GetImageEncoders(num, size, pImageCodecInfo);
+
+    for (UINT j = 0; j < num; ++j)
+    {
+        if (::wcscmp(pImageCodecInfo[j].MimeType, format) == 0)
+        {
+            *pClsid = pImageCodecInfo[j].Clsid;
+            return j; // Success
+        }
+    }
+
+    return -1; // Failure
+}
+
+void hmc_shell_util::GetThumbnail::WriteToImageByte(Gdiplus::Bitmap *image, LPCWSTR formatMimeType, std::vector<BYTE> &result)
+{
+
+    CLSID myClsId;
+    int retVal = GetEncoderClsid(formatMimeType, &myClsId);
+    if (retVal == -1)
+        return;
+
+    IStream *istream = nullptr;
+    if (::CreateStreamOnHGlobal(NULL, TRUE, &istream) != 0)
+        return;
+
+    image->Save(istream, &myClsId, nullptr);
+
+    HGLOBAL hg = NULL;
+    if (::GetHGlobalFromStream(istream, &hg) != S_OK)
+        return;
+
+    int bufsize = ::GlobalSize(hg);
+    result.resize(bufsize);
+
+    LPVOID pimage = ::GlobalLock(hg);
+
+    if (!pimage)
+    {
+        result.clear();
+        result.resize(0);
+        return;
+    }
+
+    ::memcpy(&result[0], pimage, bufsize);
+
+    istream->Release();
+
+    ::GlobalUnlock(hg);
+
+    return;
+}
+
+void hmc_shell_util::GetThumbnail::GetBitmapPixel(HBITMAP hbitmap, std::vector<BYTE> &result, Gdiplus::PixelFormat format, LPCWSTR formatMimeType)
+{
+
+    PALETTEENTRY pat = {255, 255, 255, 0};
+    LOGPALETTE logpalt = {0, 1, pat};
+    HPALETTE hpalette = ::CreatePalette(&logpalt);
+
+    Gdiplus::Bitmap *bitmap = Gdiplus::Bitmap::FromHBITMAP(hbitmap, hpalette);
+    Gdiplus::Rect rect(0, 0, bitmap->GetWidth(), bitmap->GetHeight());
+    Gdiplus::BitmapData bd;
+    bitmap->LockBits(&rect, Gdiplus::ImageLockModeRead, bitmap->GetPixelFormat(), &bd);
+    Gdiplus::Bitmap *bitmapWithAlpha = new Gdiplus::Bitmap(bd.Width, bd.Height, bd.Stride, format, (BYTE *)bd.Scan0);
+    bitmap->UnlockBits(&bd);
+
+    WriteToImageByte(bitmapWithAlpha, formatMimeType, result);
+}
+
+std::vector<BYTE> hmc_shell_util::GetThumbnail::GetBuff(std::wstring input, int nSize)
+{
+    std::vector<BYTE> result;
+
+    Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+    ULONG_PTR gdiplusToken;
+
+    if (Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr) != 0)
+    {
+        return result;
+    }
+
+    FreeAnyAuto({
+        Gdiplus::GdiplusShutdown(gdiplusToken);
+    });
+
+    HRESULT hr = ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+
+    if (SUCCEEDED(hr))
+    {
+        FreeAnyAuto({ ::CoUninitialize(); });
+
+        IShellItemImageFactory *pImageFactory;
+
+        hr = ::SHCreateItemFromParsingName(input.c_str(), nullptr, IID_PPV_ARGS(&pImageFactory));
+
+        if (SUCCEEDED(hr))
+        {
+            SIZE size = {nSize, nSize};
+
+            FreeAnyAuto({ pImageFactory->Release(); });
+
+            HBITMAP hbitmap;
+            hr = pImageFactory->GetImage(size, SIIGBF_BIGGERSIZEOK | SIIGBF_ICONONLY | SIIGBF_SCALEUP, &hbitmap);
+            if (SUCCEEDED(hr))
+            {
+                FreeAnyAuto({ ::DeleteObject(hbitmap); });
+
+                PALETTEENTRY pat = {255, 255, 255, 0};
+                LOGPALETTE logpalt = {0, 1, pat};
+                HPALETTE hpalette = ::CreatePalette(&logpalt);
+
+                Gdiplus::Bitmap *bitmap = Gdiplus::Bitmap::FromHBITMAP(hbitmap, hpalette);
+
+                if (bitmap != NULL)
+                {
+                    Gdiplus::Rect rect(0, 0, bitmap->GetWidth(), bitmap->GetHeight());
+                    Gdiplus::BitmapData bd;
+                    bitmap->LockBits(&rect, Gdiplus::ImageLockModeRead, bitmap->GetPixelFormat(), &bd);
+                    Gdiplus::Bitmap *bitmapWithAlpha = new Gdiplus::Bitmap(bd.Width, bd.Height, bd.Stride, PixelFormat32bppARGB, (BYTE *)bd.Scan0);
+                    bitmap->UnlockBits(&bd);
+                    WriteToImageByte(bitmapWithAlpha, L"image/png", result);
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
+bool hmc_shell_util::GetThumbnail::toFlie(std::wstring input, std::wstring output, int nSize)
+{
+
+    auto data = GetBuff(input, nSize);
+
+    if (!data.empty())
+    {
+        std::ofstream OutFile(output.c_str(), std::ios::out | std::ios::binary);
+        OutFile.write(reinterpret_cast<char *>(&data[0]), data.size());
+
+        if (OutFile.fail())
+        {
+            return false;
+        }
+
+        OutFile.close();
+        return true;
+    }
+
+    return false;
 }
 
 /*

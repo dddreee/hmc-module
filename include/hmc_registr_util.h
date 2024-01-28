@@ -17,14 +17,21 @@
 #define MAX_KEY_LENGTH 255
 #define MAX_VALUE_NAME 16383
 
-// 关闭注册表键
-#define _hmc_auto_free_HKey(subHKey)                                \
-	std::shared_ptr<void>##subHKey##_close_key(nullptr, [&](void *) \
-											   {\
+
+// 自动释放 注册表key
+#ifndef FreeRegKeyAuto
+        // 关闭注册表键
+#define FreeRegKeyAuto(subHKey) \
+    std::shared_ptr<void>##subHKey##_shared_close_Library_(nullptr, [&](void *) {\
+    try\
+    {\
         if (subHKey != nullptr) {\
             ::RegCloseKey(subHKey);\
-            subHKey = nullptr;\
-        } });
+        subHKey = nullptr;}\
+    }\
+    catch(...){} });
+#endif // FreeRegKeyAuto
+
 
 namespace hmc_registr_util
 {

@@ -209,7 +209,7 @@ inline std::string hmc_util::asciiConvers(std::wstring input)
     return result;
 }
 
-inline std::wstring vec2ar(std::vector<std::wstring> input)
+inline std::wstring hmc_util::vec2ar(std::vector<std::wstring> input)
 {
     std::wstring result = std::wstring();
 
@@ -231,13 +231,16 @@ inline std::wstring vec2ar(std::vector<std::wstring> input)
     {
         auto it = &input[i];
         result.append(it->begin(), it->end());
+        if(i+1 < count){
+            result.push_back(L',');
+        }
     }
 
     result.push_back(L']');
     return result;
 }
 
-inline std::string vec2ar(std::vector<std::string> input)
+inline std::string hmc_util::vec2ar(std::vector<std::string> input)
 {
     std::string result = std::string();
 
@@ -259,6 +262,9 @@ inline std::string vec2ar(std::vector<std::string> input)
     {
         auto it = &input[i];
         result.append(it->begin(), it->end());
+         if(i+1 < count){
+            result.push_back(',');
+        }
     }
 
     result.push_back(']');

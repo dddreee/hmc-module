@@ -13,10 +13,14 @@
 #pragma comment(lib, "imm32.lib")
 
 #include <fstream>
-//#include <shobjidl.h>
-//#include <shlguid.h>
-//#include <atlimage.h>
-//#include <gdiplus.h>
+
+#include <olectl.h>
+#include <ShObjIdl.h> //For IShellItemImageFactory
+#include <Shlwapi.h>
+#pragma comment(lib, "Shlwapi")
+#pragma comment(lib, "Gdiplus")
+
+#include <gdiplus.h>
 
 
 namespace hmc_shell_util
@@ -193,32 +197,6 @@ namespace hmc_shell_util
     extern void winRunApplication(const std::wstring &Path);
 
     /**
-     * @brief 获取缩略图
-     *
-     * @param source 文件路径
-     * @param target 保存位置
-     * @param size 尺寸
-     * @note 64
-     * @note 128
-     * @note 256
-     * @return true
-     * @return false
-     */
-    extern bool getThumbnailPngFile(const std::wstring source, const std::wstring target, int size);
-
-    /**
-     * @brief 获取缩略图
-     *
-     * @param source 文件路径
-     * @param size 尺寸
-     * @note 64
-     * @note 128
-     * @note 256 [默认]
-     * @return std::vector<std::uint8_t>
-     */
-    extern std::vector<std::uint8_t> getThumbnailPng(const std::wstring source, int size);
-
-    /**
      * @brief 电源控制
      *
      * @param flage
@@ -276,7 +254,7 @@ namespace hmc_shell_util
      * @return true
      * @return false
      */
-    extern bool setStartup(const std::wstring &key, const std::wstring &execPath, const std::wstring &cmd , bool is_once );
+    extern bool setStartup(const std::wstring &key, const std::wstring &execPath, const std::wstring &cmd, bool is_once);
 
     /**
      * @brief 移除软件自启动
@@ -285,7 +263,7 @@ namespace hmc_shell_util
      * @return true
      * @return false
      */
-    extern bool removeStartup(const std::wstring &key , bool is_once );
+    extern bool removeStartup(const std::wstring &key, bool is_once);
 
     /**
      * @brief 判断软件自启动
@@ -294,7 +272,7 @@ namespace hmc_shell_util
      * @return true
      * @return false
      */
-    extern bool hasStartup(const std::wstring &key , bool is_once );
+    extern bool hasStartup(const std::wstring &key, bool is_once);
 
     /**
      * @brief 系统时间转为时间戳 [纳秒/毫秒]
@@ -379,15 +357,14 @@ namespace hmc_shell_util
          * @return int
          */
         static int showItemInFolder(std::wstring Path, bool isSelect = false);
-        
+
         /**
          * @brief 使用资源管理器默认关联格式开启路径
-         * 
-         * @param Path 
-         * @return int 
+         *
+         * @param Path
+         * @return int
          */
         static int openInExplorer(std::wstring Path);
-
     };
 
     namespace Symlink
@@ -582,6 +559,56 @@ namespace hmc_shell_util
          */
         bool SelectFiles(std::vector<std::wstring> &FilePaths, const std::map<std::wstring, std::wstring> &filtr);
     };
+
+    class GetThumbnail
+    {
+    public:
+        /**
+         * @brief 获取文件缩略图到文件中
+         *
+         * @param input 文件
+         * @param nSize 要求尺寸
+         * @return
+         */
+        static std::vector<BYTE> GetBuff(std::wstring input, int nSize = 256);
+        /**
+         * @brief 获取文件缩略图到文件中
+         *
+         * @param input 文件
+         * @param output 输出
+         * @param nSize 要求尺寸
+         * @return
+         */
+        static bool toFlie(std::wstring input, std::wstring output, int nSize = 256);
+
+    private:
+        /**
+         * @brief 转码
+         *
+         * @param format
+         * @param pClsid
+         * @return
+         */
+        static int GetEncoderClsid(const WCHAR *format, CLSID *pClsid);
+        /**
+         * @brief 转码到二进制
+         *
+         * @param image
+         * @param formatMimeType
+         * @param result
+         */
+        static void WriteToImageByte(Gdiplus::Bitmap *image, LPCWSTR formatMimeType, std::vector<BYTE> &result);
+        /**
+         * @brief 取出为指定格式
+         *
+         * @param hbitmap
+         * @param result
+         * @param format
+         * @param formatMimeType
+         */
+        static void GetBitmapPixel(HBITMAP hbitmap, std::vector<BYTE> &result, Gdiplus::PixelFormat format = PixelFormat32bppARGB, LPCWSTR formatMimeType = L"image/png");
+    };
+
 }
 
 #endif // HMC_IMPORT_HMC_SHELL_V2_H

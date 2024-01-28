@@ -26,18 +26,46 @@
 
 #define HMC_ENABLE_SHUT_DOWN_PRIV_TOKEN 1
 
+// 自动释放内存
+#ifndef VcFreeAuto
+#define VcFreeAuto(Virtua) \
+	std::shared_ptr<void>##Virtua##_shared_close_FreeVSAuto_(nullptr, [&](void *) {if (Virtua != NULL) {::VirtualFree(Virtua, 0, MEM_RELEASE);} });
+#endif // VcFreeAuto
+
+// 自动释放内存
+#ifndef CatchIg
+#define CatchIg () catch(...){}
+#endif // CatchIg
+
+// 自动释放dll
+#ifndef FreeLibraryAuto
+#define FreeLibraryAuto(hModule) \
+    std::shared_ptr<void>##hModule##_shared_close_Library_(nullptr, [&](void *) {\
+    try\
+    {\
+        if (hModule != NULL) {::FreeLibrary(hModule);}\
+    }\
+    catch(...){} });
+#endif // FreeLibraryAuto
+
+
+// 自动释放Handle
+#ifndef FreeHandleAuto
+#define FreeHandleAuto(hModule) \
+    std::shared_ptr<void>##hModule##_shared_close_Handle_(nullptr, [&](void *) {\
+    try\
+    {\
+        if (hModule != NULL) {::CloseHandle(hModule);}\
+    }\
+    catch(...){} });
+#endif // FreeHandleAuto
+
 // 预赋值头
 namespace hmc_process_util
 {
 
     namespace hmc_define_util
     {
-// 自动释放dll
-#define hmc_shared_close_Library(hModule) std::shared_ptr<void>##hModule##_shared_close_Library_(nullptr, [&](void *) {if (hModule != NULL) {::FreeLibrary(hModule);} });
-// 自动释放文本
-#define hmc_shared_close_lpsz(lpwsz) std::shared_ptr<void>##lpwsz##_shared_close_lpsz_(nullptr, [&](void *) {if (lpwsz != NULL) {::GlobalFree(lpwsz);lpwsz = 0; } });
-// 释放进程句柄
-#define hmc_shared_close_handle(handle) std::shared_ptr<void>##lpwsz##_shared_free_handle(nullptr, [&](void *) {if (handle != NULL) { try{::CloseHandle(handle);}catch(...){}} });
 
 #define None std::nullopt
 
@@ -47,7 +75,6 @@ namespace hmc_process_util
         typedef NTSTATUS(NTAPI *ZwQuerySystemInformation_t)(SYSTEM_INFORMATION_CLASS, PVOID, ULONG, PULONG);
         typedef BOOL(WINAPI *LPFN_ISWOW64PROCESS)(HANDLE, PBOOL);
 
-        extern std::wstring GetProcessCommandLineByPid(_In_ DWORD pid);
         extern std::wstring GetProcessCommandLineOld(_In_ HANDLE ProcessHandle, _Out_ long *status);
         extern std::wstring GetProcessCommandLineNew(_In_ HANDLE ProcessHandle, _Out_ long *status);
         extern PVOID GetPebAddress(HANDLE ProcessHandle);

@@ -310,9 +310,9 @@ std::vector<hmc_sock_util::chConnectNet> hmc_sock_util::CpEnumConnectNetConnectU
     return result;
 }
 
-std::vector<std::variant<hmc_sock_util::chConnectNet, hmc_sock_util::chConnectNetTCP>> hmc_sock_util::enumConnectNet(bool tcp, bool udp, bool tcp6, bool udp6)
+hmc_sock_util::ConnectNetList hmc_sock_util::enumConnectNet(bool tcp, bool udp, bool tcp6, bool udp6)
 {
-    std::vector<std::variant<hmc_sock_util::chConnectNet, hmc_sock_util::chConnectNetTCP>> result;
+    ConnectNetList result;
 
     if (tcp)
     {
@@ -799,15 +799,17 @@ std::optional<std::wstring> hmc_sock_util::getSystemProxyServer()
 {
     std::optional<std::wstring> result;
 
-    HKEY key;
-    auto ret = ::RegOpenKeyExW(HKEY_CURRENT_USER, LR"(Software\Microsoft\Windows\CurrentVersion\Internet Settings)", 0, KEY_ALL_ACCESS, &key);
-    if (ret != ERROR_SUCCESS)
+    HKEY hKey;
+    auto ret = ::RegOpenKeyExW(HKEY_CURRENT_USER, LR"(Software\Microsoft\Windows\CurrentVersion\Internet Settings)", 0, KEY_ALL_ACCESS, &hKey);
+    if (hKey == NULL || ret != ERROR_SUCCESS)
     {
         return result;
     }
 
+    FreeRegKeyAuto(hKey);
+
     DWORD values_count, max_value_name_len, max_value_len;
-    ret = ::RegQueryInfoKeyW(key, NULL, NULL, NULL, NULL, NULL, NULL, &values_count, &max_value_name_len, &max_value_len, NULL, NULL);
+    ret = ::RegQueryInfoKeyW(hKey, NULL, NULL, NULL, NULL, NULL, NULL, &values_count, &max_value_name_len, &max_value_len, NULL, NULL);
     if (ret != ERROR_SUCCESS)
     {
         return result;
@@ -823,13 +825,13 @@ std::optional<std::wstring> hmc_sock_util::getSystemProxyServer()
         DWORD value_name_len = max_value_name_len + 1;
         DWORD value_type, value_len;
 
-        ::RegEnumValueW(key, i, value_name.get(), &value_name_len, NULL, &value_type, NULL, &value_len);
+        ::RegEnumValueW(hKey, i, value_name.get(), &value_name_len, NULL, &value_type, NULL, &value_len);
 
         std::shared_ptr<BYTE> value(new BYTE[value_len],
                                     std::default_delete<BYTE[]>());
 
         value_name_len = max_value_name_len + 1;
-        ::RegEnumValueW(key, i, value_name.get(), &value_name_len, NULL, &value_type, value.get(), &value_len);
+        ::RegEnumValueW(hKey, i, value_name.get(), &value_name_len, NULL, &value_type, value.get(), &value_len);
         values.push_back(std::make_tuple(value_name, value_type, value));
     }
 
@@ -869,7 +871,7 @@ std::optional<std::wstring> hmc_sock_util::getSystemProxyPac()
         WCHAR pacURL[256] = {0};
         DWORD dataSize = sizeof(pacURL);
 
-        _hmc_auto_free_HKey(hKey);
+        FreeRegKeyAuto(hKey);
 
         if (::RegQueryValueExW(hKey, pacValueName, NULL, NULL, (LPBYTE)pacURL, &dataSize) == ERROR_SUCCESS)
         {
@@ -1048,7 +1050,6 @@ std::wstring hmc_sock_util::chConnectNetTCP::to_json()
     hmc_util::replace(result, L"{pid}", std::to_wstring(pid));
     hmc_util::replace(result, L"{existsProcess}", (existsProcess ? L"true" : L"false"));
 
-
     return std::wstring(result.begin(), result.end());
 }
 
@@ -1097,3 +1098,110 @@ std::wstring hmc_sock_util::chNetAdapterAddrItem::to_json()
     return std::wstring(result.begin(), result.end());
 }
 
+std::variant<std::wstring, std::string> hmc_sock_util::to_json(hmc_sock_util::SockJsonType input)
+{
+    if (std::holds_alternative<chConnectNet>(input))
+    {
+        return std::get<chConnectNet>(input).to_json();
+    }
+
+    if (std::holds_alternative<chConnectNetTCP>(input))
+    {
+        return std::get<chConnectNetTCP>(input).to_json();
+    }
+
+    if (std::holds_alternative<chNetAdapterAddrList>(input))
+    {
+        return std::get<chNetAdapterAddrList>(input).to_json();
+    }
+
+    if (std::holds_alternative<chNetParams>(input))
+    {
+        return std::get<chNetParams>(input).to_json();
+    }
+
+    if (std::holds_alternative<std::vector<chNetAdapterAddrItem>>(input))
+    {
+        std::wstring output;
+        output.reserve(1024);
+        const auto ptr_Temp = &std::get<std::vector<chNetAdapterAddrItem>>(input);
+
+        output.push_back('[');
+
+        size_t count = ptr_Temp->size();
+        for (size_t i = 0; i < count; i++)
+        {
+            auto it = &ptr_Temp[i];
+            output.append(it->begin(), it->end());
+            if (i + 1 < count)
+            {
+                output.push_back(',');
+            }
+        }
+
+        output.push_back(']');
+        return output;
+    }
+
+    if (std::holds_alternative<std::vector<DWORD>>(input))
+    {
+        std::string output;
+        output.reserve(1024);
+        const auto ptr_Temp = &std::get<std::vector<DWORD>>(input);
+
+        output.push_back('[');
+
+        size_t count = ptr_Temp->size();
+        for (size_t i = 0; i < count; i++)
+        {
+            auto it = ptr_Temp->at(i);
+            output.append(std::to_string(it));
+            if (i + 1 < count)
+            {
+                output.push_back(',');
+            }
+        }
+
+        output.push_back(']');
+        return output;
+    }
+
+    if (std::holds_alternative<ConnectNetList>(input))
+    {
+        std::wstring output;
+        output.reserve(1024);
+        const auto ptr_Temp = &std::get<ConnectNetList>(input);
+
+        output.push_back('[');
+
+        size_t count = ptr_Temp->size();
+        for (size_t i = 0; i < count; i++)
+        {
+            auto Connect = ptr_Temp->at(i);
+
+            if (Connect.index() == 0)
+            {
+                auto item = std::get<0>(Connect);
+                auto temp_json = item.to_json();
+                output.append(temp_json.begin(), temp_json.end());
+            }
+
+            if (Connect.index() == 1)
+            {
+                auto item = std::get<1>(Connect);
+                auto temp_json = item.to_json();
+                output.append(temp_json.begin(), temp_json.end());
+            }
+
+            if (i + 1 < count)
+            {
+                output.push_back(',');
+            }
+        }
+
+        output.push_back(']');
+        return output;
+    }
+
+    return "{}";
+}

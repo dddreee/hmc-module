@@ -195,7 +195,7 @@ std::vector<hmc_process_util::ch_PROCESSENTRY32W> hmc_process_util::getProcessSn
     std::vector<ch_PROCESSENTRY32W> result;
     HANDLE hProcessSnapshot;
     PROCESSENTRY32W PE32;
-    hmc_shared_close_handle(hProcessSnapshot);
+    FreeHandleAuto(hProcessSnapshot);
 
     hProcessSnapshot = ::CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
 
@@ -262,7 +262,7 @@ DWORD hmc_process_util::getParentProcess(DWORD processID)
     WORD PID = 0;
     HANDLE hProcessSnapshot;
     PROCESSENTRY32W PE32;
-    hmc_shared_close_handle(hProcessSnapshot);
+    FreeHandleAuto(hProcessSnapshot);
 
     hProcessSnapshot = ::CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
 
@@ -520,7 +520,7 @@ std::vector<hmc_process_util::ch_PSYSTEM_PROCESS_INFORMATION> hmc_process_util::
         return result;
     }
 
-    hmc_shared_close_Library(ntdll);
+    FreeLibraryAuto(ntdll);
 
     // 获取 ZwQuerySystemInformation 函数地址
     hmc_define_util::ZwQuerySystemInformation_t ZwQuerySystemInformation = (hmc_define_util::ZwQuerySystemInformation_t)::GetProcAddress(ntdll, "NtQuerySystemInformation");
@@ -552,7 +552,7 @@ std::vector<hmc_process_util::ch_PSYSTEM_PROCESS_INFORMATION> hmc_process_util::
         return result;
     }
 
-    VsFreeAuto(buffer);
+    VcFreeAuto(buffer);
 
     status = ZwQuerySystemInformation(SystemProcessInformation, buffer, bufferSize, NULL);
 
@@ -853,7 +853,7 @@ std::vector<THREADENTRY32> hmc_process_util::getThreadSnapshot()
     HANDLE hProcessSnapshot;
     THREADENTRY32 TE32;
 
-    hmc_shared_close_handle(hProcessSnapshot);
+    FreeHandleAuto(hProcessSnapshot);
 
     hProcessSnapshot = ::CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
 
@@ -1220,7 +1220,6 @@ NTSTATUS hmc_process_util::CpGetProcessCwdPath::readCwd(wchar_t **outputString, 
     return status;
 }
 
-
 namespace hmc_process_util
 {
 
@@ -1499,7 +1498,7 @@ namespace hmc_process_util
                 return result;
             }
 
-            hmc_shared_close_handle(ProcessHandle);
+            FreeHandleAuto(ProcessHandle);
 
             hmc_process_util::EnableShutDownPriv(TOKEN_ADJUST_PRIVILEGES);
 
@@ -1526,4 +1525,3 @@ namespace hmc_process_util
     }
 
 }
-

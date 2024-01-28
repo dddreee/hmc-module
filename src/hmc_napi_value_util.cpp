@@ -1730,7 +1730,7 @@ napi_value hmc_napi_create_value::Buffer(napi_env env, void *data, size_t size)
     }
     catch (const std::exception &e)
     {
-        void *yourPointer = malloc(0);
+        void *yourPointer = nullptr;
         status = napi_create_buffer(env, 0, &yourPointer, &Results);
         assert(status == napi_ok);
     }
@@ -3329,7 +3329,7 @@ napi_value _PromiseSession_await(napi_env env, napi_callback_info info)
         {
             if (!hmc_PromiseSession::isClosed(id))
             {
-                Sleep(hmc_PromiseSession::___$Sleep_time);
+                ::Sleep(hmc_PromiseSession::___$Sleep_time);
             }
             else
             {

@@ -39,33 +39,64 @@ typedef struct _UNICODE_STRING
     catch(...){} });
 #endif // FreeLibraryAuto
 
-// 自动释放dll
-#ifndef CloseHandleAuto
-#define CloseHandleAuto(hModule) \
+// 自动释放Handle
+#ifndef FreeHandleAuto
+#define FreeHandleAuto(hModule) \
     std::shared_ptr<void>##hModule##_shared_close_Handle_(nullptr, [&](void *) {\
     try\
     {\
         if (hModule != NULL) {::CloseHandle(hModule);}\
     }\
     catch(...){} });
-#endif // CloseHandleAuto
+#endif // FreeHandleAuto
 
-#define hmc_FreeVS(Virtua) \
+// 释放vc内存开辟
+#ifndef VcFree
+#define VcFree(Virtua) \
     if (Virtua != NULL)    \
         ::VirtualFree(Virtua, 0, MEM_RELEASE);
+#endif // VcFree
 
 // 自动释放dll
 #ifndef VcAlloc
 #define VcAlloc(Type, leng) \
-    (reinterpret_cast<Type>(::VirtualAlloc(reinterpret_cast<void *>(nullptr), static_cast<DWORD>(leng), MEM_COMMIT, PAGE_READWRITE)))
-#endif // CloseHandleAuto
+    (reinterpret_cast<Type>(::VirtualAlloc(nullptr, static_cast<DWORD>(leng), MEM_COMMIT, PAGE_READWRITE)))
+#endif // VcAlloc
 
 
 // 自动释放内存
-#ifndef VsFreeAuto
-#define VsFreeAuto(Virtua) \
+#ifndef VcFreeAuto
+#define VcFreeAuto(Virtua) \
 	std::shared_ptr<void>##Virtua##_shared_close_FreeVSAuto_(nullptr, [&](void *) {if (Virtua != NULL) {::VirtualFree(Virtua, 0, MEM_RELEASE);} });
 #endif // VsFreeAuto
+
+
+// 自动释放 注册表key
+#ifndef FreeRegKeyAuto
+        // 关闭注册表键
+#define FreeRegKeyAuto(subHKey) \
+    std::shared_ptr<void>##subHKey##_shared_close_Library_(nullptr, [&](void *) {\
+    try\
+    {\
+        if (subHKey != nullptr) {\
+            ::RegCloseKey(subHKey);\
+        subHKey = nullptr;}\
+    }\
+    catch(...){} });
+#endif // FreeRegKeyAuto
+
+
+// 自动释放 自定义释放
+#ifndef FreeAnyAuto
+        // 自动释放 自定义释放
+#define FreeAnyAuto(code) \
+    std::shared_ptr<void>##hModule##_shared_close_Library_(nullptr, [&](void *) {\
+    try\
+    {\
+       code\
+    }\
+    catch(...){} });
+#endif // FreeAnyAuto
 
 
 namespace hmc_util

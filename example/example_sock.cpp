@@ -9,6 +9,9 @@
 
 void fn_enumConnectNet()
 {
+
+    std::cout << "--------------------------------------------------------" << "\n" << std::endl;
+
     auto enumConnectNet_0o1111 = hmc_sock_util::enumConnectNet(true, true, true, true);
     auto enumConnectNet_0o0001 = hmc_sock_util::enumConnectNet(false, false, false, true);
     auto enumConnectNet_0o0010 = hmc_sock_util::enumConnectNet(false, false, true, false);
@@ -20,7 +23,6 @@ void fn_enumConnectNet()
     std::cout << "[enumConnectNet_0o0010] << " << enumConnectNet_0o0010.size() << std::endl;
     std::cout << "[enumConnectNet_0o0100] << " << enumConnectNet_0o0100.size() << std::endl;
     std::cout << "[enumConnectNet_0o0001] << " << enumConnectNet_0o1000.size() << std::endl;
-
     hmc_console_util::start(true, true, true);
 
     for (auto &&Connect : enumConnectNet_0o1111)
@@ -38,6 +40,8 @@ void fn_enumConnectNet()
         }
     }
 
+    std::wcout << "--------------------------------------------------------" << "\n" << std::endl;
+
     hmc_console_util::stop(true, true, true);
 }
 
@@ -45,6 +49,7 @@ void fn_eqProxyServer()
 {
     hmc_console_util::start(true, true, true);
 
+    std::wcout << "--------------------------------------------------------" << "\n" << std::endl;
     std::wcout << L"[getSystemProxyServer] << " << std::endl;
 
     auto SystemProxyServer = hmc_sock_util::getSystemProxyServer();
@@ -58,6 +63,8 @@ void fn_eqProxyServer()
         std::wcout << "none"
                    << "\n";
     }
+
+    std::wcout << "--------------------------------------------------------" << "\n" << std::endl;
 
     std::wcout << L"[getSystemProxyPac] << " << std::endl;
 
@@ -73,6 +80,8 @@ void fn_eqProxyServer()
                    << "\n";
     }
 
+    std::wcout << "--------------------------------------------------------" << "\n" << std::endl;
+
     std::wcout << L"[getDomainAddress] << " << std::endl;
 
     for (auto &&i : hmc_sock_util::getDomainAddress(L"baidu.com"))
@@ -83,12 +92,15 @@ void fn_eqProxyServer()
     std::wcout << L"[getHostsPath] << " << std::endl;
     std::wcout << hmc_sock_util::getHostsPath() << std::endl;
 
+    std::wcout << "--------------------------------------------------------" << "\n" << std::endl;
+
     hmc_console_util::stop(true, true, true);
 }
 
 void fm_getAdapterIPList()
 {
     hmc_console_util::start(true, true, true);
+    std::wcout << "--------------------------------------------------------" << "\n" << std::endl;
 
     auto list = hmc_sock_util::getAdapterIPList();
 
@@ -99,6 +111,8 @@ void fm_getAdapterIPList()
         std::wcout << it.to_json() << std::endl;
     }
 
+    std::wcout << "--------------------------------------------------------" << "\n" << std::endl;
+
     hmc_console_util::stop(true, true, true);
 }
 
@@ -107,8 +121,10 @@ int main()
     fn_enumConnectNet();
     fn_eqProxyServer();
 
+    std::cout << "--------------------------------------------------------" << "\n" << std::endl;
     std::wcout << L"[getNetParams()] << " << std::endl;
     std::cout << hmc_sock_util::getNetParams().to_json() << std::endl;
+    std::cout << "--------------------------------------------------------" << "\n" << std::endl;
 
     fm_getAdapterIPList();
 

@@ -2,6 +2,7 @@
  * @file hmc_sock_util.h
  * @author kihlh, kiic
  * @brief 网络模块
+ * @note windows.h 会默认把<winsock.h> 导入因此此模块需要在windows.h导入之前导入
  * @version 0.1
  * @date 2024-01-28
  *
@@ -43,17 +44,6 @@ namespace hmc_sock_util
 {
     namespace hmc_define_util
     {
-
-#ifndef _hmc_auto_free_HKey
-        // 关闭注册表键
-#define _hmc_auto_free_HKey(subHKey)                                \
-    std::shared_ptr<void>##subHKey##_close_key(nullptr, [&](void *) \
-                                               {\
-        if (subHKey != nullptr) {\
-            ::RegCloseKey(subHKey);\
-            subHKey = nullptr;\
-        } });
-#endif // _hmc_auto_free_HKey
 
     }
 
@@ -133,7 +123,7 @@ namespace hmc_sock_util
         std::wstring remoteIP; // 解析出来的实际远程ip
         std::wstring state;    // 状态码 "CLOSED"|"LISTEN"|"SYN-SENT"|"SYN-RECEIVED"|"ESTABLISHED"|"FIN-WAIT-1"|"FIN-WAIT-2"|"CLOSE-WAIT"|"CLOSING"|"LAST-ACK"|"TIME-WAIT"|"DELETE-TCB"|"UNKNOWN"
         std::wstring to_json();
-        };
+    };
 
     // 获取本机局域网的所有ip ( 并按照适配器名称区分 ,v4,v6 )
     struct chNetAdapterAddrItem
@@ -256,34 +246,47 @@ namespace hmc_sock_util
      * @return chNetAdapterAddrList
      */
     extern chNetAdapterAddrList CpUaToAddrItem(PIP_ADAPTER_UNICAST_ADDRESS ua);
-    
+
     /**
      * @brief 枚举本机TCP v6 当前端口列表
-     * 
-     * @return std::vector<chConnectNetTCP> 
+     *
+     * @return std::vector<chConnectNetTCP>
      */
     extern std::vector<chConnectNetTCP> CpEnumConnectNetConnectTCP6();
 
     /**
      * @brief 枚举本机TCP v4 当前端口列表
-     * 
-     * @return std::vector<chConnectNetTCP> 
+     *
+     * @return std::vector<chConnectNetTCP>
      */
     extern std::vector<chConnectNetTCP> CpEnumConnectNetConnectTCP4();
-    
+
     /**
      * @brief 枚举本机UDP v6 当前端口列表
-     * 
-     * @return std::vector<chConnectNet> 
+     *
+     * @return std::vector<chConnectNet>
      */
     extern std::vector<chConnectNet> CpEnumConnectNetConnectUDP6();
 
     /**
      * @brief 枚举本机UDP v4 当前端口列表
-     * 
-     * @return std::vector<chConnectNet> 
+     *
+     * @return std::vector<chConnectNet>
      */
     extern std::vector<chConnectNet> CpEnumConnectNetConnectUDP4();
+
+    typedef std::variant<
+        chConnectNet, chConnectNetTCP, chNetAdapterAddrList, chNetParams,
+        std::vector<chNetAdapterAddrItem>,
+        std::vector<DWORD>,
+        std::vector<std::variant<chConnectNet, chConnectNetTCP>>>
+        SockJsonType;
+
+    typedef std::vector<
+        std::variant<chConnectNet, chConnectNetTCP>>
+        ConnectNetList;
+
+    extern std::variant<std::wstring, std::string> to_json(SockJsonType input);
 };
 
 #endif // MODE_INTERNAL_INCLUDE_HMC_SOCK_UTIL_HPP
