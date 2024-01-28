@@ -1,4 +1,4 @@
-#include "./hmc_napi_value_util.h"
+﻿#include "./hmc_napi_value_util.h"
 
 #ifdef MODE_INTERNAL_INCLUDE_HMC_NAPI_VALUE_UTIL_HPP
 
@@ -802,11 +802,31 @@ string hmc_napi_get_value::string_utf8(napi_env env, napi_value nodeValue, strin
     }
     if (hmc_napi_type::diff(env, nodeValue, napi_string))
     {
-        size_t str_len = 0;
-        napi_get_value_string_utf8(env, nodeValue, nullptr, 0, &str_len);
-        result.reserve(str_len + 1);
-        result.resize(str_len);
-        napi_get_value_string_utf8(env, nodeValue, &result[0], result.capacity(), nullptr);
+
+        size_t str_len;
+        napi_value tmp;
+        napi_status status = napi_coerce_to_string(env, nodeValue, &tmp);
+
+        if (status == napi_ok)
+        {
+            status = napi_get_value_string_utf8(env, tmp, NULL, 0, &str_len);
+
+            if (status != napi_ok || str_len > 1024 * 1024 * 1024 * 2)
+            {
+                return result;
+            }
+
+            str_len += 1;
+            result.resize(str_len);
+
+            status = napi_get_value_string_utf8(env, tmp, (char *)&result[0], str_len, NULL);
+
+            if (status != napi_ok)
+            {
+                result.clear();
+                result.resize(0);
+            }
+        }
         return result;
     }
     else if (hmc_napi_type::diff(env, nodeValue, napi_number))
@@ -853,17 +873,29 @@ wstring hmc_napi_get_value::string_utf16(napi_env env, napi_value nodeValue, wst
     {
         size_t str_len;
         napi_value tmp;
-        napi_coerce_to_string(env, nodeValue, &tmp);
-        napi_get_value_string_utf16(env, tmp, NULL, 0, &str_len);
-        str_len += 1;
-        wchar_t *str = new wchar_t[str_len];
-        napi_get_value_string_utf16(env, tmp, (char16_t *)str, str_len, NULL);
+        napi_status status = napi_coerce_to_string(env, nodeValue, &tmp);
 
-        for (size_t i = 0; i < str_len; i++)
+        if (status == napi_ok)
         {
-            result.push_back(str[i]);
+            status = napi_get_value_string_utf16(env, tmp, NULL, 0, &str_len);
+
+            if (status != napi_ok || str_len > 1024 * 1024 * 1024 * 2)
+            {
+                return result;
+            }
+
+            str_len += 1;
+            result.resize(str_len);
+
+            status = napi_get_value_string_utf16(env, tmp, (char16_t *)&result[0], str_len, NULL);
+
+            if (status != napi_ok)
+            {
+                result.clear();
+                result.resize(0);
+            }
         }
-        delete[] str;
+
         return result;
     }
     // 506546

@@ -175,3 +175,93 @@ inline std::wstring hmc_util::unicodeStringToWString(UNICODE_STRING unicodeStrin
     }
     return result;
 }
+
+inline std::wstring hmc_util::asciiConvers(std::string input)
+{
+    std::wstring result = std::wstring();
+
+    result.reserve(input.size());
+
+    for (auto &&item : input)
+    {
+        if (127 >= item && item >= 0)
+        {
+            result.push_back(static_cast<wchar_t>(item));
+        }
+    }
+
+    return result;
+}
+
+inline std::string hmc_util::asciiConvers(std::wstring input)
+{
+    std::string result = std::string();
+    result.reserve(input.size());
+
+    for (auto &&item : input)
+    {
+        if (127 >= item && item >= 0)
+        {
+            result.push_back(static_cast<char>(item));
+        }
+    }
+
+    return result;
+}
+
+inline std::wstring vec2ar(std::vector<std::wstring> input)
+{
+    std::wstring result = std::wstring();
+
+    DWORD buff_size = MAX_PATH;
+
+    size_t count = input.size();
+    for (size_t i = 0; i < count; i++)
+    {
+        auto it = &input[i];
+        buff_size += it->size();
+    }
+
+    result.reserve(buff_size);
+
+    result.push_back(L'[');
+
+    count = input.size();
+    for (size_t i = 0; i < count; i++)
+    {
+        auto it = &input[i];
+        result.append(it->begin(), it->end());
+    }
+
+    result.push_back(L']');
+    return result;
+}
+
+inline std::string vec2ar(std::vector<std::string> input)
+{
+    std::string result = std::string();
+
+    DWORD buff_size = MAX_PATH;
+
+    size_t count = input.size();
+    for (size_t i = 0; i < count; i++)
+    {
+        auto it = &input[i];
+        buff_size += it->size();
+    }
+
+    result.reserve(buff_size);
+
+    result.push_back('[');
+
+    count = input.size();
+    for (size_t i = 0; i < count; i++)
+    {
+        auto it = &input[i];
+        result.append(it->begin(), it->end());
+    }
+
+    result.push_back(']');
+
+    return result;
+}

@@ -13,12 +13,6 @@ namespace hmc_shell_util
     bool getThumbnailPngFile(const std::wstring source, const std::wstring target, int size = 256);
     std::vector<std::uint8_t> getThumbnailPng(const std::wstring source, int size = 256);
     bool SetFolderIcon(const std::wstring &folderPath, const std::wstring &iconPath, int iconIndex = 0);
-    bool setSystemStartup(const std::wstring &ApplicationPath);
-    bool setSystemStartup(const std::wstring &ApplicationPath, const std::wstring &cwd, const std::wstring &cmd = L"");
-    bool setSystemStartup(chShortcutLinkItem ShortcutLinkItem);
-    bool setSystemStartupService(chShortcutLinkItem ShortcutLinkItem);
-    bool setSystemStartupService(const std::wstring &ApplicationPath);
-    bool setSystemStartupService(const std::wstring &ApplicationPath, const std::wstring &cwd = L"", const std::wstring &cmd = L"");
     bool setStartup(const std::wstring &key, const std::wstring &execPath, const std::wstring &cmd = L"");
     bool removeStartup(const std::wstring &key);
     bool hasStartup(const std::wstring &key);
@@ -401,11 +395,11 @@ int hmc_shell_util::ShellOpen::openUrl(std::wstring Url, bool isCurrentBrowser)
 {
     int result = 0;
 
-    if (!isCurrentBrowser)
-    {
+    // if (!isCurrentBrowser)
+    // {
         HINSTANCE hResult = ShellExecuteW(NULL, L"open", Url.c_str(), NULL, NULL, SW_SHOWNORMAL);
         result = (int)(UINT_PTR)hResult;
-    }
+    // }
 
     return result;
 }
@@ -766,7 +760,7 @@ bool hmc_shell_util::getThumbnailPngFile(const std::wstring source, const std::w
             return false;
         }
 
-        OutFile.write(reinterpret_cast<char *>(result.data()),result.size());
+        OutFile.write(reinterpret_cast<char *>(result.data()), result.size());
 
         if (OutFile.fail())
         {
@@ -827,29 +821,29 @@ bool hmc_shell_util::SetFolderIcon(const std::wstring &folderPath, const std::ws
 {
 
     // 设置文件夹属性为只读，保护 desktop.ini 文件
-    DWORD folderAttributes = GetFileAttributesW(folderPath.c_str());
+    DWORD folderAttributes = ::GetFileAttributesW(folderPath.c_str());
     if (folderAttributes == INVALID_FILE_ATTRIBUTES)
         return false;
 
     if ((folderAttributes & FILE_ATTRIBUTE_READONLY) != FILE_ATTRIBUTE_READONLY)
-        SetFileAttributesW(folderPath.c_str(), folderAttributes | FILE_ATTRIBUTE_READONLY);
+        ::SetFileAttributesW(folderPath.c_str(), folderAttributes | FILE_ATTRIBUTE_READONLY);
 
     // 构建 desktop.ini 文件路径
     std::wstring desktopIniPath = folderPath + L"\\desktop.ini";
 
     // 写入 desktop.ini 文件内容
     std::wstring iniContent = L"[.ShellClassInfo]\nIconResource=" + iconPath + L"," + std::to_wstring(iconIndex) + L"\n";
-    if (!WritePrivateProfileStringW(L".ShellClassInfo", L"IconResource", (iconPath + L"," + std::to_wstring(iconIndex)).c_str(), desktopIniPath.c_str()))
+    if (!::WritePrivateProfileStringW(L".ShellClassInfo", L"IconResource", (iconPath + L"," + std::to_wstring(iconIndex)).c_str(), desktopIniPath.c_str()))
         return false;
 
     // 设置 desktop.ini 文件属性为隐藏和系统
-    SetFileAttributesW(desktopIniPath.c_str(), FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM);
+    ::SetFileAttributesW(desktopIniPath.c_str(), FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM);
 
     // 将文件夹的只读属性恢复
-    SetFileAttributesW(folderPath.c_str(), folderAttributes);
+    ::SetFileAttributesW(folderPath.c_str(), folderAttributes);
 
     // 使文件夹的缩略图设置生效
-    SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
+    ::SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
 
     return true;
 }
@@ -861,7 +855,7 @@ bool hmc_shell_util::powerControl(DWORD dwReason, bool aims)
     OSVERSIONINFO osvi = {0};
     osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
     dwReason |= (aims != FALSE) ? EWX_FORCE : EWX_FORCEIFHUNG;
-    return ExitWindowsEx(dwReason, 0);
+    return ::ExitWindowsEx(dwReason, 0);
 }
 
 void hmc_shell_util::powerControl(int flage)
@@ -878,20 +872,20 @@ void hmc_shell_util::powerControl(int flage)
         powerControl(EWX_LOGOFF, false);
         break;
     case 1005: // 锁定
-        LockWorkStation();
+        ::LockWorkStation();
         break;
     case 1006: // 关闭显示器
-        SendMessage(FindWindow(0, 0), WM_SYSCOMMAND, SC_MONITORPOWER, 2);
+        ::SendMessage(::FindWindow(0, 0), WM_SYSCOMMAND, SC_MONITORPOWER, 2);
         break;
     case 1007: // 打开显示器
-        SendMessage(FindWindow(0, 0), WM_SYSCOMMAND, SC_MONITORPOWER, -1);
+        ::SendMessage(::FindWindow(0, 0), WM_SYSCOMMAND, SC_MONITORPOWER, -1);
         break;
     }
 }
 
 void hmc_shell_util::beep()
 {
-    MessageBeep(MB_OK);
+    ::MessageBeep(MB_OK);
 }
 
 hmc_shell_util::fileBrowser::Options::Options()
@@ -941,6 +935,11 @@ std::vector<std::wstring> hmc_shell_util::Symlink::getHardLinkList(const std::ws
 
     std::vector<wchar_t> buffer;
 
+    if (filePath.size() < 3)
+    {
+        return hardLinks;
+    }
+
     // 缓冲区大小 重置值
     size_t re_length = MAX_PATH + 1;
     // 缓冲区大小 获取值
@@ -976,13 +975,17 @@ std::vector<std::wstring> hmc_shell_util::Symlink::getHardLinkList(const std::ws
     std::shared_ptr<void> open_hkey_close_key(nullptr, [&](void *)
                                               { ::FindClose(hFind); });
 
+    std::wstring driveLetter = std::wstring();
+    driveLetter.push_back(filePath[0]);
+    driveLetter.push_back(filePath[1]);
+
     do
     {
 
         if (buff_size > 0)
         {
 
-            std::wstring temp = std::wstring();
+            std::wstring temp = std::wstring(driveLetter.begin(), driveLetter.end());
 
             for (size_t i = 0; i < buff_size; i++)
             {
@@ -1030,7 +1033,7 @@ std::vector<std::wstring> hmc_shell_util::Symlink::getHardLinkList(const std::ws
 
 bool hmc_shell_util::Symlink::isLink(const std::wstring &Path)
 {
-    DWORD dwAttr = GetFileAttributesW(Path.c_str());
+    DWORD dwAttr = ::GetFileAttributesW(Path.c_str());
     if (dwAttr == INVALID_FILE_ATTRIBUTES)
     {
         return false;
@@ -1054,7 +1057,15 @@ std::wstring hmc_shell_util::Symlink::getSymbolicLinkTarget(const std::wstring &
         return L"";
     }
 
+    // '\\\\?\\F:\\source\\module\\hmc-win32\\source\\h2c-win32\\source\\node\\debug.js'
     std::wstring finalPath = std::wstring(targetPath, pathSize);
+
+    const std::wstring prefix = L"\\\\?\\";
+
+    if (finalPath.find(prefix) == 0)
+    {
+        finalPath.erase(0, prefix.size());
+    }
 
     ::CloseHandle(hFile);
     return finalPath;

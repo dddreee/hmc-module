@@ -119,6 +119,7 @@ std::vector<DWORD> hmc_process_util::enumProcessIDList()
     std::vector<DWORD> processList = {};
     processList.resize(lp_cblength);
 
+    // 最好使用大型数组，因为很难预测在调用 EnumProcesses 时将存在多少个进程。
     if (!::EnumProcesses(processList.data(), sizeof(DWORD) * lp_cblength, &lp_cblength))
     {
         processList.resize(0);
@@ -544,14 +545,14 @@ std::vector<hmc_process_util::ch_PSYSTEM_PROCESS_INFORMATION> hmc_process_util::
         }
     }
 
-    PVOID buffer = ::VirtualAlloc((LPVOID)NULL, (DWORD)(bufferSize), MEM_COMMIT, PAGE_READWRITE);
+    PVOID buffer = ::VirtualAlloc(nullptr, static_cast<DWORD>(bufferSize), MEM_COMMIT, PAGE_READWRITE);
 
     if (buffer == NULL)
     {
         return result;
     }
 
-    hmc_FreeVSAuto(buffer);
+    VsFreeAuto(buffer);
 
     status = ZwQuerySystemInformation(SystemProcessInformation, buffer, bufferSize, NULL);
 

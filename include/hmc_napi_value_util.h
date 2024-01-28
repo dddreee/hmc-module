@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 //  导入模块之前必须已经导入 node_api.h
 
@@ -64,8 +64,16 @@ using namespace std;
 #define as_ExFunction(func)hmc_napi_create_value::ExFunction(env,#func,func)
 
 #define at_Boolean(index) (input.exists(index) ? input.getBool(index, false) : false)
+#define at_StringW(index) (input.exists(index) ? input.getStringWide(index, L"") : L"")
+#define at_Number32(index) (input.exists(index) ? input.getInt(index, 0) : 0)
+#define at_Number64(index) (input.exists(index) ? input.getInt64(index, 0) : 0)
+
 
 #define at_BooleanOr(index,or_value) (input.exists(index) ? input.getBool(index, or_value) : or_value)
+#define at_StringWOr(index,or_value) (input.exists(index) ? input.getStringWide(index, or_value) : or_value)
+#define at_Number32Or(index,or_value) (input.exists(index) ? input.getInt(index, or_value) : or_value)
+#define at_Number64Or(index,or_value) (input.exists(index) ? input.getInt64(index, or_value) : or_value)
+
 
 // 导出一个 其他文件的 函数 并设置名称
 #define ___EXPORT_NAPI_REMOTE_FN____PROMISE_SESSION                           \

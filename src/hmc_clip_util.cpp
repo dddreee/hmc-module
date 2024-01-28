@@ -1,4 +1,4 @@
-#include "./hmc_clip_util.h"
+﻿#include "./hmc_clip_util.h"
 
 hmc_clip_util::chClipInfo hmc_clip_util::GetClipboardInfo()
 {
@@ -15,7 +15,7 @@ void hmc_clip_util::GetClipboardHtml::lib_rp_setw_10(std::string &sourcePtr, std
     std::string result;
 
     char temp[11];
-    sprintf_s(temp, 11, "%010u", (std::uint8_t)len);
+    ::sprintf_s(temp, 11, "%010u", (std::uint8_t)len);
 
     result.append(temp);
 
@@ -491,7 +491,7 @@ std::vector<UINT> hmc_clip_util::EnumClipboardFormatList()
     else
         return result;
 
-    size_t len = CountClipboardFormats();
+    size_t len = ::CountClipboardFormats();
     result.reserve(len);
 
     UINT num = 0;
