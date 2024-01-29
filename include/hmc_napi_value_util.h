@@ -1402,6 +1402,15 @@ public:
 	 * @return false
 	 */
 	bool eq(vector<std::tuple<size_t, js_valuetype>> eq_type, bool throw_error = false);
+	
+	/**
+	 * @brief 判断当前传入的值是否是期待值
+	 *
+	 * @param eq_type
+	 * @return true
+	 * @return false
+	 */
+	bool eq(std::vector<js_valuetype> eq_type, bool throw_error = false);
 
 	/**
 	 * @brief 判断当前传入的值是否是期待值

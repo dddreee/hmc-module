@@ -1067,7 +1067,7 @@ void hmc_shell_util::GetThumbnail::WriteToImageByte(Gdiplus::Bitmap *image, LPCW
     if (::GetHGlobalFromStream(istream, &hg) != S_OK)
         return;
 
-    int bufsize = ::GlobalSize(hg);
+    size_t bufsize = ::GlobalSize(hg);
     result.resize(bufsize);
 
     LPVOID pimage = ::GlobalLock(hg);
@@ -1165,7 +1165,7 @@ std::vector<BYTE> hmc_shell_util::GetThumbnail::GetBuff(std::wstring input, int 
     return result;
 }
 
-bool hmc_shell_util::GetThumbnail::toFlie(std::wstring input, std::wstring output, int nSize)
+bool hmc_shell_util::GetThumbnail::toFile(std::wstring input, std::wstring output, int nSize)
 {
 
     auto data = GetBuff(input, nSize);

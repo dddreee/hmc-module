@@ -2504,6 +2504,69 @@ bool hmc_NodeArgsValue::eq(size_t index, js_valuetype type, bool throw_error)
     return results;
 }
 
+bool hmc_NodeArgsValue::eq(std::vector<js_valuetype> eq_type, bool throw_error)
+{
+    bool results = true;
+    std::string error_message = "There are discrepancies between the current parameters and the expected values. The listed type errors are as follows:\n ";
+
+    size_t count = eq_type.size();
+    for (size_t i = 0; i < count; i++)
+    {
+        const auto value = eq_type[i];
+        const auto index = i;
+
+        if (!this->exists(index))
+        {
+            error_message.append("Parameter [ ");
+            error_message.append(std::to_string(index));
+            error_message.append(" ] does not exist. Only [ ");
+            error_message.append(std::to_string(this->args.size()));
+            error_message.append(" ] parameter(s) were provided.\n");
+
+            error_message.append("The expected parameter should be: \n [ ");
+
+            error_message.append(hmc_napi_type::typeName((js_valuetype)value));
+            error_message.append(" , ");
+
+            error_message = hmc_string_util::trimAll(error_message, " , ");
+
+            error_message.append(" ]\n-------------------------------------------\n");
+            results = false;
+
+            continue;
+        }
+
+        auto the_type = hmc_napi_type::getType(env, args[index]);
+
+        string the_types = hmc_napi_type::typeName((js_valuetype)value);
+        bool has_second = the_type == value;
+
+        if (!has_second)
+        {
+            error_message.append(" [ ");
+            error_message.append(std::to_string(index));
+            error_message.append(" ]   ->  ");
+
+            error_message.append(hmc_napi_type::typeName(the_type));
+
+            error_message.append(" != ");
+            error_message.append(" Your type: < ");
+            error_message.append(the_types);
+            error_message.append(" >      ");
+            error_message.append("   \n");
+            error_message.append("-------------------------------------------\n");
+            results = false;
+        }
+    }
+
+    if (throw_error && !results)
+    {
+        napi_throw_type_error(env, NULL, hmc_string_util::string_to_lpstr(error_message));
+    }
+
+    return results;
+}
+
 bool hmc_NodeArgsValue::eq(vector<std::tuple<size_t, js_valuetype>> eq_type, bool throw_error)
 {
     bool results = true;

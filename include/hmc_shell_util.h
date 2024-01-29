@@ -579,7 +579,7 @@ namespace hmc_shell_util
          * @param nSize 要求尺寸
          * @return
          */
-        static bool toFlie(std::wstring input, std::wstring output, int nSize = 256);
+        static bool toFile(std::wstring input, std::wstring output, int nSize = 256);
 
     private:
         /**

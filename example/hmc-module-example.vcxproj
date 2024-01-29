@@ -151,23 +151,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\hmc_automation_util.cpp" />
-    <ClCompile Include="..\src\hmc_byte_util.cpp" />
-    <ClCompile Include="..\src\hmc_clip_util.cpp" />
-    <ClCompile Include="..\src\hmc_console_util.cpp" />
-    <ClCompile Include="..\src\hmc_json_util.cpp" />
-    <ClCompile Include="..\src\hmc_process_util.cpp" />
-    <ClCompile Include="..\src\hmc_registr_util.cpp" />
-    <ClCompile Include="..\src\hmc_shell_util.cpp" />
-    <ClCompile Include="..\src\hmc_sock_util.cpp" />
-    <ClCompile Include="..\src\hmc_string_util.cpp" />
-    <ClCompile Include="..\src\hmc_usb_util.cpp" />
-    <ClCompile Include="..\src\hmc_util.cpp" />
-    <ClCompile Include="..\src\hmc_windows_util.cpp" />
-    <ClCompile Include="example_sock.cpp" />
-    <ClCompile Include="hmc-module-example.cpp" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="..\include\hmc_automation_util.h" />
     <ClInclude Include="..\include\hmc_byte_util.h" />
     <ClInclude Include="..\include\hmc_clip_util.h" />
@@ -182,6 +165,21 @@
     <ClInclude Include="..\include\hmc_util.h" />
     <ClInclude Include="..\include\hmc_windows_util.h" />
     <ClInclude Include="..\include\json.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\hmc_automation_util.cpp" />
+    <ClCompile Include="..\src\hmc_byte_util.cpp" />
+    <ClCompile Include="..\src\hmc_clip_util.cpp" />
+    <ClCompile Include="..\src\hmc_console_util.cpp" />
+    <ClCompile Include="..\src\hmc_json_util.cpp" />
+    <ClCompile Include="..\src\hmc_process_util.cpp" />
+    <ClCompile Include="..\src\hmc_registr_util.cpp" />
+    <ClCompile Include="..\src\hmc_shell_util.cpp" />
+    <ClCompile Include="..\src\hmc_string_util.cpp" />
+    <ClCompile Include="..\src\hmc_usb_util.cpp" />
+    <ClCompile Include="..\src\hmc_util.cpp" />
+    <ClCompile Include="..\src\hmc_windows_util.cpp" />
+    <ClCompile Include="example-shell.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
