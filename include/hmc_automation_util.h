@@ -38,6 +38,10 @@ namespace hmc_Keyboard // hmc_Keyboard 是个鼠标操作功能合集
             bool is_valid();
             // 转为json
             std::string to_json();
+            // 转 映射代码 例如 KeyE , KeyA
+            std::string to_mpCode();
+            // 转 映射代码 例如 A 0 1
+            std::string to_mpKey();
         };
 
         /**
@@ -209,12 +213,9 @@ namespace hmc_mouse // hmc_mouse 是个鼠标操作功能合集
             DWORD time;      // 事件时间
             long x;          // 坐标 左到右边
             long y;          // 坐标 顶部到底部
-            // 开辟内存
-            MouseEvent();
-            // 判断内容是否有效
-            bool is_valid();
-            // 转到json
-            std::string to_json();
+            MouseEvent();// 开辟内存
+            bool is_valid();// 判断内容是否有效
+            std::string to_json();// 转到json
         };
 
         /**

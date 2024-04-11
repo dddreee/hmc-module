@@ -29,12 +29,13 @@
 // 自动释放内存
 #ifndef VcFreeAuto
 #define VcFreeAuto(Virtua) \
-	std::shared_ptr<void>##Virtua##_shared_close_FreeVSAuto_(nullptr, [&](void *) {if (Virtua != NULL) {::VirtualFree(Virtua, 0, MEM_RELEASE);} });
+    std::shared_ptr<void>##Virtua##_shared_close_FreeVSAuto_(nullptr, [&](void *) {if (Virtua != NULL) {::VirtualFree(Virtua, 0, MEM_RELEASE);} });
 #endif // VcFreeAuto
 
 // 自动释放内存
 #ifndef CatchIg
-#define CatchIg () catch(...){}
+#define CatchIg \
+    () catch (...) {}
 #endif // CatchIg
 
 // 自动释放dll
@@ -47,7 +48,6 @@
     }\
     catch(...){} });
 #endif // FreeLibraryAuto
-
 
 // 自动释放Handle
 #ifndef FreeHandleAuto
@@ -363,6 +363,22 @@ namespace hmc_process_util
      */
     extern std::wstring getProcessCommandLine(DWORD processID);
 
+    /**
+     * @brief 将命令行文本转为数组
+     *
+     * @param commandLine
+     * @return std::vector<std::wstring>
+     */
+    extern std::vector<std::wstring> commandLineToList(std::wstring commandLine);
+
+    /**
+     * @brief 尽可能的获取出此可执行文件的工作路径 哪怕他不是正确的
+     * 
+     * @param processID 
+     * @return std::wstring 
+     */
+    extern std::vector<std::wstring> getExecutableCwdList (DWORD processID);
+
     class openProcessToken
     {
     public:
@@ -373,6 +389,16 @@ namespace hmc_process_util
          * @param isEnableShutDownPriv 是否使用提权令牌
          */
         openProcessToken(DWORD ProcessId, bool isEnableShutDownPriv = false);
+        openProcessToken();
+        /**
+         * @brief Construct a new open Process Token object
+         *
+         * @param dwDesiredAccess
+         * @param bInheritHandle
+         * @param dwProcessId
+         */
+        openProcessToken(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId);
+
         ~openProcessToken();
         DWORD GpProcessId = NULL;
         HANDLE GpHProcess = NULL;
@@ -491,6 +517,11 @@ namespace hmc_process_util
     public:
         std::wstring cwdPath;
         CpGetProcessCwdPath(DWORD processID);
+    };
+
+    struct LocalFreeDeleter
+    {
+        inline void operator()(wchar_t **ptr) const { ::LocalFree(ptr); }
     };
 
 }

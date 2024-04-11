@@ -26,6 +26,40 @@ void hmc_clip_util::GetClipboardHtml::lib_rp_setw_10(std::string &sourcePtr, std
     }
 }
 
+hmc_clip_util::chClipTextType hmc_clip_util::isClipboardText() {
+    chClipTextType result = hmc_clip_util::chClipTextType{ false, 0};
+    HANDLE handle = NULL;
+
+    if (!::OpenClipboard(NULL))
+    {
+        return result;
+    }
+
+    if (!::IsClipboardFormatAvailable(CF_UNICODETEXT) && !::IsClipboardFormatAvailable(CF_TEXT))
+    {
+        return result;
+    }
+
+    std::shared_ptr<void> shared_close_Free_Auto_(nullptr, [&](void*)
+        {
+            ::CloseClipboard();
+            ::GlobalUnlock(handle);
+            if (handle != NULL)
+            {
+                handle = NULL;
+            } });
+
+    result.is_valid = true;
+
+    handle = ::GetClipboardData(CF_UNICODETEXT);
+
+    // 获取数据的大小
+    SIZE_T size = GlobalSize(handle);
+    result.size = size;
+
+    return result;
+}
+
 bool hmc_clip_util::SetClipboardHtml(const std::string &html, const std::string SourceURL)
 {
 

@@ -20,8 +20,10 @@
 #pragma comment(lib, "Shlwapi")
 #pragma comment(lib, "Gdiplus")
 
-#include <gdiplus.h>
+#ifndef _GDIPLUS_H
 
+#include <gdiplus.h>
+#endif // !_GDIPLUS_HPP
 
 namespace hmc_shell_util
 {
@@ -143,6 +145,18 @@ namespace hmc_shell_util
      * @return false
      */
     extern bool showContextMenu(HWND hwnd, std::wstring filePath, int x, int y);
+
+    /**
+     * @brief 显示文件的系统右键
+     *
+     * @param hwnd 窗口句柄
+     * @param filePath 文件路径
+     * @param x 左到右的坐标
+     * @param y 上到下的坐标
+     * @return true
+     * @return false
+     */
+    extern bool showContextMenu(HWND hwnd, std::vector<std::wstring> filePathList, int x, int y);
 
     /**
      * @brief 切换系统输入法

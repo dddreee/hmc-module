@@ -522,13 +522,130 @@ hmc_shell_util::chShortcutLinkItem hmc_shell_util::getShortcutLink(std::wstring 
     return lnkItem;
 }
 
-bool hmc_shell_util::showContextMenu(HWND hwnd, std::wstring filePath, int x, int y)
+class CComInterfaceReleaser {
+public:
+	explicit CComInterfaceReleaser(IUnknown * i) : _i(i) {}
+	~CComInterfaceReleaser() { if (_i) _i->Release(); }
+private:
+	IUnknown * _i;
+};
+
+struct ComInitializer {
+    bool isValid ;
+	ComInitializer() {
+		const auto result = ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+		isValid = SUCCEEDED(result);
+	}
+
+	~ComInitializer() {
+		if(isValid)::CoUninitialize();
+	}
+};
+
+class CItemIdArrayReleaser {
+public:
+	explicit CItemIdArrayReleaser(const std::vector<ITEMIDLIST*>& idArray) : _array(idArray) {}
+	~CItemIdArrayReleaser() {
+		for (ITEMIDLIST* item: _array)
+			CoTaskMemFree(item);
+	}
+
+	CItemIdArrayReleaser& operator=(const CItemIdArrayReleaser&) = delete;
+private:
+	const std::vector<ITEMIDLIST*>& _array;
+};
+
+bool prepareContextMenuForObjects(std::vector<std::wstring> objects, void * parentWindow, HMENU& hmenu, IContextMenu*& imenu)
 {
+	ComInitializer comInitializer;
+
+	if (objects.empty())
+		return false;
+
+	std::vector<ITEMIDLIST*> ids;
+	std::vector<LPCITEMIDLIST> relativeIds;
+	IShellFolder * ifolder = 0;
+	for (size_t i = 0; i < objects.size(); ++i)
+	{
+        std::wstring filePath = std::wstring(objects[i]);
+
+        hmc_util::replaceAll(filePath, L"/", L"\\");
+
+        ids.push_back(0);
+		HRESULT result = SHParseDisplayName(filePath.c_str(), 0, &ids.back(), 0, 0);
+		if (!SUCCEEDED(result) || !ids.back())
+		{
+			ids.pop_back();
+			continue;
+		}
+
+		relativeIds.push_back(0);
+		result = SHBindToParent(ids.back(), IID_IShellFolder, (void**)&ifolder, &relativeIds.back());
+		if (!SUCCEEDED(result) || !relativeIds.back())
+			relativeIds.pop_back();
+		else if (i < objects.size() - 1 && ifolder)
+		{
+			ifolder->Release();
+			ifolder = nullptr;
+		}
+	}
+
+	CItemIdArrayReleaser arrayReleaser(ids);
+
+	imenu = 0;
+	HRESULT result = ifolder->GetUIObjectOf((HWND)parentWindow, (UINT)relativeIds.size(), (const ITEMIDLIST **)relativeIds.data(), IID_IContextMenu, 0, (void**)&imenu);
+	if (!SUCCEEDED(result) || !imenu)
+		return false;
+
+	hmenu = CreatePopupMenu();
+	if (!hmenu)
+		return false;
+	return (SUCCEEDED(imenu->QueryContextMenu(hmenu, 0, 1, 0x7FFF, CMF_NORMAL)));
+}
+
+// 此 函数传入非法地址会出现错误
+bool hmc_shell_util::showContextMenu(HWND hwnd, const std::vector<std::wstring> filePathList, int x, int y)
+{
+
+  ComInitializer comInitializer;
+
+	IContextMenu * imenu = 0;
+	HMENU hMenu = NULL;
+	if (!prepareContextMenuForObjects(filePathList, hwnd, hMenu, imenu) || !hMenu || !imenu)
+		return false;
+
+	CComInterfaceReleaser menuReleaser(imenu);
+
+    int command = ::TrackPopupMenuEx(hMenu, TPM_RETURNCMD | TPM_NONOTIFY, x, y, static_cast<HWND>(hwnd), NULL);
+    if (command > 0)
+    {
+      
+        int command_temp = command - 1;
+        CMINVOKECOMMANDINFOEX info = { 0 };
+        info.cbSize = sizeof(info);
+        info.hwnd = static_cast<HWND>(hwnd);
+        info.lpVerb = MAKEINTRESOURCEA(command - 1);
+        info.nShow = SW_NORMAL;
+        imenu->InvokeCommand((LPCMINVOKECOMMANDINFO)&info);
+
+    }
+
+	::DestroyMenu(hMenu);
+
+	return command > 0;
+    
+}
+
+bool hmc_shell_util::showContextMenu(HWND hwnd, std::wstring file_Path, int x, int y)
+{
+
+    std::wstring filePath = std::wstring(file_Path.begin(), file_Path.end());
+    hmc_util::replaceAll(filePath, L"/", L"\\");
 
     auto temp_coinit = ::CoInitialize(NULL);
 
     IShellItem *pItem;
-    HRESULT hr = SHCreateItemFromParsingName(filePath.c_str(), NULL, IID_PPV_ARGS(&pItem));
+    HRESULT hr = ::SHCreateItemFromParsingName(filePath.c_str(), NULL, IID_PPV_ARGS(&pItem));
     if (FAILED(hr))
     {
         return false;
@@ -560,19 +677,21 @@ bool hmc_shell_util::showContextMenu(HWND hwnd, std::wstring filePath, int x, in
         return false;
     }
 
-    if (!::IsWindow(hwnd))
-    {
-        return false;
-    }
 
-    int command = ::TrackPopupMenuEx(hMenu, TPM_RETURNCMD | TPM_NONOTIFY, x, y, hwnd, NULL);
+    int command = ::TrackPopupMenuEx(hMenu, TPM_RETURNCMD | TPM_NONOTIFY, x, y, static_cast<HWND>(hwnd), NULL);
     if (command > 0)
     {
+        // if ((command & 0xF000) == 0xF000)
+        //{
+        //     ::DestroyMenu(hMenu);
+        //     return command & 0x0FFF;
+        // }
+
         int command_temp = command - 1;
         CMINVOKECOMMANDINFOEX info = {0};
         info.cbSize = sizeof(info);
-        info.hwnd = hwnd;
-        info.lpVerb = MAKEINTRESOURCEA(command_temp);
+        info.hwnd = static_cast<HWND>(hwnd);
+        info.lpVerb = MAKEINTRESOURCEA(command - 1);
         info.nShow = SW_NORMAL;
         pContextMenu->InvokeCommand((LPCMINVOKECOMMANDINFO)&info);
     }
@@ -587,7 +706,7 @@ bool hmc_shell_util::showContextMenu(HWND hwnd, std::wstring filePath, int x, in
         ::CoUninitialize();
     }
 
-    return true;
+    return command > 0;
 }
 
 bool hmc_shell_util::setShortcutLink(std::wstring lnkPath, chShortcutLinkItem shortcutLinkItem)

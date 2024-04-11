@@ -12,6 +12,11 @@
 
 namespace hmc_clip_util
 {
+    struct chClipTextType
+    {
+        bool is_valid;
+        size_t size;
+    };
 
     // 写入剪贴板文本
     extern bool SetClipboardText(std::wstring text);
@@ -43,6 +48,9 @@ namespace hmc_clip_util
     extern bool HasClipboardImage();
     // 判断格式是否有效
     extern bool isFormatAvailable(UINT uCF);
+    // 判断剪贴板数据是否为文本
+    extern chClipTextType isClipboardText();
+
 
     // 获取剪贴板的html文本
     class GetClipboardHtml

@@ -18,6 +18,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <thread>
 
 #ifndef _WINTERNL_
 typedef struct _UNICODE_STRING
@@ -89,8 +90,11 @@ typedef struct _UNICODE_STRING
 // 自动释放 自定义释放
 #ifndef FreeAnyAuto
         // 自动释放 自定义释放
+#define CONCAT_IMPL(x, y) x##y
+#define CONCAT(x, y) CONCAT_IMPL(x, y)
+
 #define FreeAnyAuto(code) \
-    std::shared_ptr<void>##hModule##_shared_close_Library_(nullptr, [&](void *) {\
+    std::shared_ptr<void> CONCAT(_Shared_close_Library,__LINE__) (nullptr, [&](void *) {\
     try\
     {\
        code\
@@ -217,7 +221,21 @@ namespace hmc_util
      * @return std::string 
      */
     extern inline std::string vec2ar(std::vector<std::string> input);
-
+    
+    extern inline bool is_utf8(const std::string input);
+    
+    /**
+     * @brief 线程id转为数字id
+     * 
+     * @param thread_id 
+     * @return DWORD 
+     */
+    extern DWORD toThreadId(std::thread::id thread_id);
+    std::string getBaseName(const std::string path);
+    std::wstring getBaseName(const std::wstring path);
+    bool diffBaseName(const std::string path1, const std::string path2);
+    bool diffBaseName(const std::wstring path1, const std::wstring path2);
+    
 }
 
 template <typename T>

@@ -28,6 +28,30 @@ namespace hmc_Keyboard
     {
         return time > 0 || id >= 0;
     }
+    
+    std::string hmc_Keyboard::keyboardHook::KeyboardEvent::to_mpCode(){
+        std::string result = hmc_automation_util::GpMapVirtualCode(keyCode);
+
+        if (!result.empty() && result.back() == '\\')
+        {
+            result.clear();
+            result.append("\\\\");
+        }
+         return result;
+    }
+
+    
+    std::string hmc_Keyboard::keyboardHook::KeyboardEvent::to_mpKey(){
+        std::string result = hmc_automation_util::GpMapVirtualKey(keyCode);
+
+        if (!result.empty() && result.back() == '\\')
+        {
+            result.clear();
+            result.append("\\\\");
+        }
+         return result;
+    }
+
 
     std::string hmc_Keyboard::keyboardHook::KeyboardEvent::to_json()
     {

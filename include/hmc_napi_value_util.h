@@ -23,10 +23,11 @@
 #include <unordered_map>
 #include <thread>
 #include <shared_mutex>
+#include <variant>
 
 #include "./hmc_string_util.h"
 
-using namespace std;
+const size_t BIT_2GB = 8589934592ull
 
 // 导出一个 static 函数
 #define EXPORT_NAPI_STATIC_FN(func)              \
@@ -50,30 +51,28 @@ using namespace std;
 	{                                                             \
 		name, 0, (napi_callback) & func, 0, 0, 0, napi_default, 0 \
 	}
-#define as_Number(data)hmc_napi_create_value::Number(env,(int64_t)data)
-#define as_String(data)hmc_napi_create_value::String(env,data)
-#define as_Boolean(data)hmc_napi_create_value::Boolean(env,data)
-#define as_Null()hmc_napi_create_value::Null(env)
-#define as_Bigint(data)hmc_napi_create_value::Bigint(env,(long long)data)
-#define as_Numberf(data)hmc_napi_create_value::Number(env,(double)data)
-#define as_Buffer(data)hmc_napi_create_value::Buffer(env,data)
-#define as_StringA(data)hmc_napi_create_value::StringA(env,data)
-#define as_Number32(data)hmc_napi_create_value::Number(env,(int)data)
-#define as_ArrayNul()hmc_napi_create_value::Array::Number(env, std::vector<int>()) 
+#define as_Number(data) hmc_napi_create_value::Number(env, (int64_t)data)
+#define as_String(data) hmc_napi_create_value::String(env, data)
+#define as_Boolean(data) hmc_napi_create_value::Boolean(env, data)
+#define as_Null() hmc_napi_create_value::Null(env)
+#define as_Bigint(data) hmc_napi_create_value::Bigint(env, (long long)data)
+#define as_Numberf(data) hmc_napi_create_value::Number(env, (double)data)
+#define as_Buffer(data) hmc_napi_create_value::Buffer(env, data)
+#define as_StringA(data) hmc_napi_create_value::StringA(env, data)
+#define as_Number32(data) hmc_napi_create_value::Number(env, (int)data)
+#define as_ArrayNul() hmc_napi_create_value::Array::Number(env, std::vector<int>())
 
-#define as_ExFunction(func)hmc_napi_create_value::ExFunction(env,#func,func)
+#define as_ExFunction(func) hmc_napi_create_value::ExFunction(env, #func, func)
 
 #define at_Boolean(index) (input.exists(index) ? input.getBool(index, false) : false)
 #define at_StringW(index) (input.exists(index) ? input.getStringWide(index, L"") : L"")
 #define at_Number32(index) (input.exists(index) ? input.getInt(index, 0) : 0)
 #define at_Number64(index) (input.exists(index) ? input.getInt64(index, 0) : 0)
 
-
-#define at_BooleanOr(index,or_value) (input.exists(index) ? input.getBool(index, or_value) : or_value)
-#define at_StringWOr(index,or_value) (input.exists(index) ? input.getStringWide(index, or_value) : or_value)
-#define at_Number32Or(index,or_value) (input.exists(index) ? input.getInt(index, or_value) : or_value)
-#define at_Number64Or(index,or_value) (input.exists(index) ? input.getInt64(index, or_value) : or_value)
-
+#define at_BooleanOr(index, or_value) (input.exists(index) ? input.getBool(index, or_value) : or_value)
+#define at_StringWOr(index, or_value) (input.exists(index) ? input.getStringWide(index, or_value) : or_value)
+#define at_Number32Or(index, or_value) (input.exists(index) ? input.getInt(index, or_value) : or_value)
+#define at_Number64Or(index, or_value) (input.exists(index) ? input.getInt64(index, or_value) : or_value)
 
 // 导出一个 其他文件的 函数 并设置名称
 #define ___EXPORT_NAPI_REMOTE_FN____PROMISE_SESSION                           \
@@ -89,6 +88,7 @@ using namespace std;
 		EXPORT_NAPI_REMOTE_FN(_PromiseSession_get_sleep_time),                \
 		EXPORT_NAPI_REMOTE_FN(_PromiseSession_allTasks)
 
+	;
 typedef enum
 {
 	// ES6 types (corresponds to typeof)
@@ -160,7 +160,7 @@ namespace hmc_napi_get_value
 	 * @param buffer
 	 */
 	template <typename T>
-	extern void buffer_vector(napi_env env, napi_value nodeValue, vector<T> &buffer);
+	extern void buffer_vector(napi_env env, napi_value nodeValue, std::vector<T> &buffer);
 	/**
 	 * @brief 获取为布尔值
 	 *
@@ -177,7 +177,7 @@ namespace hmc_napi_get_value
 	 * @param nodeValue
 	 * @return string
 	 */
-	extern string string_utf8(napi_env env, napi_value nodeValue, string defaultValue = string(""));
+	extern std::string string_utf8(napi_env env, napi_value nodeValue, std::string defaultValue = std::string(""));
 	/**
 	 * @brief 获取为utf8标准的文本
 	 *
@@ -185,7 +185,7 @@ namespace hmc_napi_get_value
 	 * @param nodeValue
 	 * @return string
 	 */
-	extern wstring string_utf16(napi_env env, napi_value nodeValue, wstring defaultValue = wstring(L""));
+	extern std::wstring string_utf16(napi_env env, napi_value nodeValue, std::wstring defaultValue = std::wstring(L""));
 	/**
 	 * @brief 获取为窄(A)文本
 	 *
@@ -193,7 +193,7 @@ namespace hmc_napi_get_value
 	 * @param nodeValue
 	 * @return string
 	 */
-	extern string string_ansi(napi_env env, napi_value nodeValue, string defaultValue = string(""));
+	extern std::string string_ansi(napi_env env, napi_value nodeValue, std::string defaultValue = std::string(""));
 	/**
 	 * @brief 获取为宽(W)文本
 	 *
@@ -201,7 +201,7 @@ namespace hmc_napi_get_value
 	 * @param nodeValue
 	 * @return wstring
 	 */
-	extern wstring string_wide(napi_env env, napi_value nodeValue, wstring defaultValue = wstring(L""));
+	extern std::wstring string_wide(napi_env env, napi_value nodeValue, std::wstring defaultValue = std::wstring(L""));
 	/**
 	 * @brief 获取文本数组
 	 *
@@ -209,7 +209,7 @@ namespace hmc_napi_get_value
 	 * @param nodeValue
 	 * @return vector<string>
 	 */
-	extern vector<string> array_string_utf8(napi_env env, napi_value nodeValue);
+	extern std::vector<std::string> array_string_utf8(napi_env env, napi_value nodeValue);
 	/**
 	 * @brief 获取文本数组
 	 *
@@ -217,7 +217,7 @@ namespace hmc_napi_get_value
 	 * @param nodeValue
 	 * @return vector<string>
 	 */
-	extern vector<wstring> array_string_utf16(napi_env env, napi_value nodeValue);
+	extern std::vector<std::wstring> array_string_utf16(napi_env env, napi_value nodeValue);
 	/**
 	 * @brief 获取数字数组
 	 *
@@ -225,7 +225,7 @@ namespace hmc_napi_get_value
 	 * @param nodeValue
 	 * @return vector<int>
 	 */
-	extern vector<int> array_int(napi_env env, napi_value nodeValue);
+	extern std::vector<int> array_int(napi_env env, napi_value nodeValue);
 	/**
 	 * @brief 获取数字数组
 	 *
@@ -233,7 +233,7 @@ namespace hmc_napi_get_value
 	 * @param nodeValue
 	 * @return vector<int>
 	 */
-	extern vector<int64_t> array_int64(napi_env env, napi_value nodeValue);
+	extern std::vector<int64_t> array_int64(napi_env env, napi_value nodeValue);
 	/**
 	 * @brief 获取数字数组
 	 *
@@ -241,7 +241,7 @@ namespace hmc_napi_get_value
 	 * @param nodeValue
 	 * @return vector<int>
 	 */
-	extern vector<double> array_double(napi_env env, napi_value nodeValue);
+	extern std::vector<double> array_double(napi_env env, napi_value nodeValue);
 	/**
 	 * @brief 将文本的显示状态转为CPP的显示状态代码
 	 *
@@ -273,7 +273,7 @@ namespace hmc_napi_get_value
 	 * @param nodeValue
 	 * @return vector<unsigned char>
 	 */
-	extern vector<unsigned char> buffer_vector(napi_env env, napi_value nodeValue);
+	extern std::vector<unsigned char> buffer_vector(napi_env env, napi_value nodeValue);
 	/**
 	 * @brief 传入缓冲是utf16的文本
 	 *
@@ -281,7 +281,7 @@ namespace hmc_napi_get_value
 	 * @param nodeValue
 	 * @return wstring
 	 */
-	extern wstring buffer_utf16_strW(napi_env env, napi_value nodeValue);
+	extern std::wstring buffer_utf16_strW(napi_env env, napi_value nodeValue);
 	/**
 	 * @brief 传入缓冲是ansi的文本（winapi转换过得）
 	 *
@@ -289,7 +289,7 @@ namespace hmc_napi_get_value
 	 * @param nodeValue
 	 * @return string
 	 */
-	extern string buffer_ansi_strA(napi_env env, napi_value nodeValue);
+	extern std::string buffer_ansi_strA(napi_env env, napi_value nodeValue);
 	/**
 	 * @brief 传入缓冲是utf8的文本
 	 *
@@ -297,7 +297,7 @@ namespace hmc_napi_get_value
 	 * @param nodeValue
 	 * @return string
 	 */
-	extern string buffer_utf8_strU8(napi_env env, napi_value nodeValue);
+	extern std::string buffer_utf8_strU8(napi_env env, napi_value nodeValue);
 	/**
 	 * @brief 缓冲区转为c标准接口的文本 Buffer.from('文本', 'utf16le')
 	 * @param env
@@ -335,7 +335,7 @@ namespace hmc_napi_get_value
 	 * @param key
 	 * @return napi_value
 	 */
-	extern napi_value get_object_value(napi_env env, napi_value objectValue, string key);
+	extern napi_value get_object_value(napi_env env, napi_value objectValue, std::string key);
 	/**
 	 * @brief 使用键取值为int
 	 *
@@ -345,7 +345,7 @@ namespace hmc_napi_get_value
 	 * @param defaultValue
 	 * @return int
 	 */
-	extern int get_object_value_int(napi_env env, napi_value objectValue, string key, int defaultValue = 0);
+	extern int get_object_value_int(napi_env env, napi_value objectValue, std::string key, int defaultValue = 0);
 	/**
 	 * @brief 使用键取值为int64
 	 *
@@ -355,7 +355,7 @@ namespace hmc_napi_get_value
 	 * @param defaultValue
 	 * @return int64_t
 	 */
-	extern int64_t get_object_value_int64(napi_env env, napi_value objectValue, string key, int64_t defaultValue = 0);
+	extern int64_t get_object_value_int64(napi_env env, napi_value objectValue, std::string key, int64_t defaultValue = 0);
 	/**
 	 * @brief 使用键取值为double
 	 *
@@ -365,7 +365,7 @@ namespace hmc_napi_get_value
 	 * @param defaultValue
 	 * @return double
 	 */
-	extern double get_object_value_double(napi_env env, napi_value objectValue, string key, double defaultValue = 0);
+	extern double get_object_value_double(napi_env env, napi_value objectValue, std::string key, double defaultValue = 0);
 	/**
 	 * @brief 使用键取值为bool
 	 *
@@ -376,7 +376,7 @@ namespace hmc_napi_get_value
 	 * @return true
 	 * @return false
 	 */
-	extern bool get_object_value_bool(napi_env env, napi_value objectValue, string key, bool defaultValue = false);
+	extern bool get_object_value_bool(napi_env env, napi_value objectValue, std::string key, bool defaultValue = false);
 	/**
 	 * @brief 使用键取值为 utf16
 	 *
@@ -386,7 +386,7 @@ namespace hmc_napi_get_value
 	 * @param defaultValue
 	 * @return wstring
 	 */
-	extern wstring get_object_value_utf16(napi_env env, napi_value objectValue, string key, wstring defaultValue = wstring(L""));
+	extern std::wstring get_object_value_utf16(napi_env env, napi_value objectValue, std::string key, std::wstring defaultValue = std::wstring(L""));
 	/**
 	 * @brief 使用键取值为utf8
 	 *
@@ -396,7 +396,7 @@ namespace hmc_napi_get_value
 	 * @param defaultValue
 	 * @return string
 	 */
-	extern string get_object_value_utf8(napi_env env, napi_value objectValue, string key, string defaultValue = string(""));
+	extern std::string get_object_value_utf8(napi_env env, napi_value objectValue, std::string key, std::string defaultValue = std::string(""));
 	/**
 	 * @brief 使用键取值为ansi
 	 *
@@ -406,7 +406,7 @@ namespace hmc_napi_get_value
 	 * @param defaultValue
 	 * @return string
 	 */
-	extern string get_object_value_ansi(napi_env env, napi_value objectValue, string key, string defaultValue = string(""));
+	extern std::string get_object_value_ansi(napi_env env, napi_value objectValue, std::string key, std::string defaultValue = std::string(""));
 	/**
 	 * @brief 使用键取值为 RECT
 	 *
@@ -417,9 +417,9 @@ namespace hmc_napi_get_value
 	extern RECT rect(napi_env env, napi_value objectValue);
 	/**
 	 * @brief 获取为时间戳
-	 * 
-	 * @param env 
-	 * @param objectValue 
+	 *
+	 * @param env
+	 * @param objectValue
 	 */
 	extern double date(napi_env env, napi_value objectValue);
 }
@@ -433,14 +433,14 @@ namespace hmc_napi_type
 	 * @param valuetype
 	 * @return string
 	 */
-	extern string typeName(js_valuetype valuetype);
+	extern std::string typeName(js_valuetype valuetype);
 	/**
 	 * @brief 获取napi数据的类型文本
 	 *
 	 * @param valuetype
 	 * @return string
 	 */
-	extern string typeName(napi_valuetype valuetype);
+	extern std::string typeName(napi_valuetype valuetype);
 	/**
 	 * @brief 获取napi类型变量名称（人话）
 	 *
@@ -448,7 +448,7 @@ namespace hmc_napi_type
 	 * @param valuetype
 	 * @return string
 	 */
-	extern string typeName(napi_env env, napi_value valuetype);
+	extern std::string typeName(napi_env env, napi_value valuetype);
 
 	/**
 	 * @brief 获取node类型的枚举值
@@ -633,7 +633,7 @@ namespace hmc_napi_type
 	 * @return true
 	 * @return false
 	 */
-	extern bool isObjectkeyExists(napi_env env, napi_value objectValue, string key);
+	extern bool isObjectkeyExists(napi_env env, napi_value objectValue, std::string key);
 	/**
 	 * @brief 是数组
 	 *
@@ -692,64 +692,74 @@ namespace hmc_napi_type
 
 namespace hmc_napi_create_value
 {
+
+	/**
+	 * @brief Buffer 的释放函数
+	 *
+	 * @param env
+	 * @param data
+	 * @param hint
+	 */
+	void BufferFinalizer(napi_env env, void *data, void *hint);
+
 	/**
 	 * @brief 创建一个函数
-	 * 
+	 *
 	 * @param env 上下文
 	 * @param name 函数名称
 	 * @param cb 函数
-	 * @return napi_value 
+	 * @return napi_value
 	 */
 	napi_value ExFunction(napi_env env, std::string name, napi_callback cb);
 
 	/**
 	 * @brief 创建一个错误
-	 * 
+	 *
 	 * @param env 上下文
 	 * @param error 错误信息
 	 * @param fn_name 函数名
-	 * @return napi_value 
+	 * @return napi_value
 	 */
-	napi_value Error(napi_env env, string error, string fn_name = "", string ErrorCode = "HMC_NAPI_ERROR");
+	napi_value Error(napi_env env, std::string error, std::string fn_name = "", std::string ErrorCode = "HMC_NAPI_ERROR");
 	/**
 	 * @brief 立即报错 并返回null 给node
-	 * 
+	 *
 	 * @param env 上下文
 	 * @param error 错误信息
 	 * @param fn_name 函数名
-	 * @return napi_value 
+	 * @return napi_value
 	 */
-	napi_value Error(napi_env env, wstring error, wstring fn_name = L"", wstring ErrorCode = L"HMC_NAPI_ERROR");
+	napi_value Error(napi_env env, std::wstring error, std::wstring fn_name = L"", std::wstring ErrorCode = L"HMC_NAPI_ERROR");
 	/**
 	 * @brief 立即报错 并返回null 给node 只能是utf8文本
-	 * 
+	 *
 	 * @param env 上下文
 	 * @param immediately 是否立即报错
 	 * @param error 错误信息
 	 * @param fn_name 函数名
-	 * @return napi_value 
+	 * @return napi_value
 	 */
-	napi_value ErrorBreak(napi_env env,  string error, string fn_name = "", string ErrorCode = "HMC_NAPI_ERROR");
+	napi_value ErrorBreak(napi_env env, std::string error, std::string fn_name = "", std::string ErrorCode = "HMC_NAPI_ERROR");
 	/**
 	 * @brief 立即报错 并返回null 给node 只能是A文本
-	 * 
+	 *
 	 * @param env 上下文
 	 * @param immediately 是否立即报错
 	 * @param error 错误信息
 	 * @param fn_name 函数名
-	 * @return napi_value 
+	 * @return napi_value
 	 */
-	napi_value ErrorBreakA(napi_env env,  string error, string fn_name = "", string ErrorCode = "HMC_NAPI_ERROR");
+	napi_value ErrorBreakA(napi_env env, std::string error, std::string fn_name = "", std::string ErrorCode = "HMC_NAPI_ERROR");
 	/**
 	 * @brief 立即报错 并返回null 给node 只能是utf16文本
-	 * 
+	 *
 	 * @param env 上下文
 	 * @param immediately 是否立即报错
 	 * @param error 错误信息
 	 * @param fn_name 函数名
-	 * @return napi_value 
+	 * @return napi_value
 	 */
-	napi_value ErrorBreak(napi_env env,wstring error, wstring fn_name = L"", wstring ErrorCode = L"HMC_NAPI_ERROR");
+	napi_value ErrorBreak(napi_env env, std::wstring error, std::wstring fn_name = L"", std::wstring ErrorCode = L"HMC_NAPI_ERROR");
 
 	// 创建一个布尔型
 	napi_value Boolean(napi_env env, bool value = false);
@@ -757,13 +767,13 @@ namespace hmc_napi_create_value
 	napi_value Boolean(napi_env env, int value = 0);
 
 	// 返回一个 string utf8 string
-	napi_value String(napi_env env, string value , size_t re_size = NAPI_AUTO_LENGTH);
+	napi_value String(napi_env env, std::string value, size_t re_size = NAPI_AUTO_LENGTH);
 
 	// 返回一个 string utf8 string
-	napi_value StringA(napi_env env, string value, size_t re_size = NAPI_AUTO_LENGTH);
+	napi_value StringA(napi_env env, std::string value, size_t re_size = NAPI_AUTO_LENGTH);
 	// 返回一个 string utf16 string
-	napi_value String(napi_env env, wstring value, size_t re_size = NAPI_AUTO_LENGTH);
-	
+	napi_value String(napi_env env, std::wstring value, size_t re_size = NAPI_AUTO_LENGTH);
+
 	napi_value String(napi_env env);
 
 	/**
@@ -817,8 +827,7 @@ namespace hmc_napi_create_value
 	 * @param size
 	 * @return napi_value
 	 */
-	napi_value Buffer(napi_env env, vector<unsigned char> &buffer);
-	napi_value Buffer(napi_env env, void *data, size_t size);
+	napi_value Buffer(napi_env env, std::vector<unsigned char> &buffer);
 
 	/**
 	 * @brief 返回一个 null
@@ -855,113 +864,72 @@ namespace hmc_napi_create_value
 	 * @param anyValue
 	 * @return napi_value
 	 */
-	napi_value New(napi_env env, any anyValue);
+	napi_value New(napi_env env, std::any anyValue);
 
 	napi_value New(napi_env env);
 
-	namespace Array
+	class jsArray
 	{
-		/**
-		 * @brief 支持多种类型的数组
-		 *
-		 * @param env
-		 * @param wstringVector
-		 * @return napi_value
-		 */
-		napi_value New(napi_env env, vector<napi_value> wstringVector);
-		napi_value New(napi_env env, vector<any> wstringVector);
-		/**
-		 * @brief 创建一个全是文本的数组
-		 *
-		 * @param env
-		 * @param stringVector
-		 * @return napi_value
-		 */
-		napi_value String(napi_env env, vector<string> stringVector);
-		napi_value String(napi_env env, vector<wstring> wstringVector);
-		/**
-		 * @brief 创建一个全是数字的数组
-		 *
-		 * @param env
-		 * @param intVector
-		 * @return napi_value
-		 */
-		napi_value Number(napi_env env, vector<int> intVector);
+	private:
+		napi_env node_env = nullptr;
+		std::vector<napi_value> napi_value_list;
+		napi_value array_value = nullptr;
+		bool is_ready_ok = false;
+		napi_status status = napi_ok;
 
-		/**
-		 * @brief 创建一个全是数字的数组
-		 *
-		 * @param env
-		 * @param intVector
-		 * @return napi_value
-		 */
-		napi_value Bigint(napi_env env, vector<int> intVector);
-		/**
-		 * @brief 创建一个全是数字的数组
-		 *
-		 * @param env
-		 * @param intVector
-		 * @return napi_value
-		 */
-		napi_value Boolean(napi_env env, vector<bool> boolVector);
-	}
+	public:
+		size_t size();
+		void clear();
+		jsArray(napi_env env);
+		void putValue(napi_value Object);
+		void putBigint(int64_t Object);
+		void putNumber(int64_t Object);
+		void putNumber(double Object);
+		void putNull();
+		void putUndefined();
+		void putBuffer(std::vector<unsigned char> input);
+		void putBoolean(bool Boolean);
+		void putString(std::wstring Object, size_t re_size = 0);
+		void putString(std::string Object, size_t re_size = 0);
+		void putStringA(std::string Object, size_t re_size = 0);
+		napi_value toValue();
+	};
 
-	namespace Object
+	typedef std::variant<std::wstring, std::string> StringVar;
+
+	class jsObject
 	{
-		/**
-		 * @brief 创建一个全是文本的 键值对对象
-		 *
-		 * @param env
-		 * @param mapObject
-		 * @return napi_value
-		 */
-		napi_value Object(napi_env env, map<string, string> mapObject);
-		/**
-		 * @brief 创建一个全是文本的 键值对对象
-		 *
-		 * @param env
-		 * @param mapObject
-		 * @return napi_value
-		 */
-		napi_value Object(napi_env env, map<wstring, wstring> mapObject);
+	private:
+		napi_env node_env = nullptr;
+		std::map<StringVar, napi_value> napi_value_list;
+		napi_value object_value = nullptr;
+		bool is_ready_ok = false;
+		napi_status status = napi_ok;
 
-		/**
-		 * @brief 创建一个全是int的 键值对对象
-		 *
-		 * @param env
-		 * @param mapObject
-		 * @return napi_value
-		 */
-		napi_value Object(napi_env env, map<string, int> mapObject);
-		/**
-		 * @brief 创建一个全是napi_value的 键值对对象
-		 *
-		 * @param env
-		 * @param mapObject
-		 * @return napi_value
-		 */
-		napi_value Object(napi_env env, map<string, napi_value> mapObject);
-		/**
-		 * @brief 创建一个任意js支持的类型
-		 *
-		 * @param env
-		 * @param mapObject
-		 * @return napi_value
-		 */
-		napi_value Object(napi_env env, map<string, any> mapObject);
-		napi_value Object(napi_env env);
-		bool putValue(napi_env env, napi_value Object,wstring key,napi_value value);
-		bool putValue(napi_env env, napi_value Object,string key,napi_value value);
-		bool putValue(napi_env env, napi_value Object,string key,string value);
-		bool putValue(napi_env env, napi_value Object,wstring key,wstring value);
-		
-	}
+	public:
+		size_t size();
+		void clear();
+		jsObject(napi_env env);
+		void putValue(StringVar key, napi_value Object);
+		void putBigint(StringVar key, int64_t Object);
+		void putNumber(StringVar key, int64_t Object);
+		void putNumber(StringVar key, double Object);
+		void putNull(StringVar key);
+		void putUndefined(StringVar key);
+		void putBuffer(StringVar key, std::vector<unsigned char> input);
+		void putBoolean(StringVar key, bool Boolean);
+		void putString(StringVar key, std::wstring Object, size_t re_size = 0);
+		void putString(StringVar key, std::string Object, size_t re_size = 0);
+		void putStringA(StringVar key, std::string Object, size_t re_size = 0);
+		napi_value toValue();
+	};
 
 }
+
 class js_value
 {
 private:
-	any data;
+	std::any data;
 
 public:
 	js_valuetype type;
@@ -973,7 +941,7 @@ public:
 	 *
 	 * @return string
 	 */
-	string typeName();
+	std::string typeName();
 	/**
 	 * @brief 获取指定索引为 int
 	 *
@@ -997,7 +965,7 @@ public:
 	 * @param defaultValue
 	 * @return string
 	 */
-	string getStringAnsi(string defaultValue = string(""));
+	std::string getStringAnsi(std::string defaultValue = std::string(""));
 	/**
 	 * @brief 获取指定索引为  String Wide
 	 *
@@ -1005,7 +973,7 @@ public:
 	 * @param defaultValue
 	 * @return wstring
 	 */
-	wstring getStringWide(wstring defaultValue = wstring(L""));
+	std::wstring getStringWide(std::wstring defaultValue = std::wstring(L""));
 	/**
 	 * @brief 获取指定索引为  String Utf8
 	 *
@@ -1013,7 +981,7 @@ public:
 	 * @param defaultValue
 	 * @return string
 	 */
-	string getStringUtf8(string defaultValue = string(""));
+	std::string getStringUtf8(std::string defaultValue = std::string(""));
 	/**
 	 * @brief 获取指定索引为 布尔
 	 *
@@ -1030,7 +998,7 @@ public:
 	 * @param defaultValue
 	 * @return vector<unsigned char>
 	 */
-	vector<unsigned char> getBuffer(vector<unsigned char> defaultValue = {});
+	std::vector<unsigned char> getBuffer(std::vector<unsigned char> defaultValue = {});
 	/**
 	 * @brief 获取指定索引为  Double
 	 *
@@ -1062,7 +1030,7 @@ public:
 	 * @param defaultValue
 	 * @return vector<string>
 	 */
-	vector<string> getArrayString(vector<string> defaultValue = {});
+	std::vector<std::string> getArrayString(std::vector<std::string> defaultValue = {});
 	/**
 	 * @brief 获取指定索引为 int 数组
 	 *
@@ -1070,7 +1038,7 @@ public:
 	 * @param defaultValue
 	 * @return vector<int>
 	 */
-	vector<int> getArrayInt(vector<int> defaultValue = {});
+	std::vector<int> getArrayInt(std::vector<int> defaultValue = {});
 	/**
 	 * @brief 获取指定索引为 utf16 数组
 	 *
@@ -1078,7 +1046,7 @@ public:
 	 * @param defaultValue
 	 * @return vector<wstring>
 	 */
-	vector<wstring> getArrayWstring(vector<wstring> defaultValue = {});
+	std::vector<std::wstring> getArrayWstring(std::vector<std::wstring> defaultValue = {});
 	/**
 	 * @brief 判断值是否存在
 	 *
@@ -1186,7 +1154,7 @@ public:
 	 * @return true
 	 * @return false
 	 */
-	bool isObjectkeyExists(napi_env env, napi_value objectValue, string key);
+	bool isObjectkeyExists(napi_env env, napi_value objectValue, std::string key);
 	/**
 	 * @brief 是数组
 	 *
@@ -1287,7 +1255,7 @@ public:
 	 * @param defaultValue
 	 * @return string
 	 */
-	string getStringAnsi(size_t index, string defaultValue = string(""));
+	std::string getStringAnsi(size_t index, std::string defaultValue = std::string(""));
 	/**
 	 * @brief 获取指定索引为  String Wide
 	 *
@@ -1295,7 +1263,7 @@ public:
 	 * @param defaultValue
 	 * @return wstring
 	 */
-	wstring getStringWide(size_t index, wstring defaultValue = wstring(L""));
+	std::wstring getStringWide(size_t index, std::wstring defaultValue = std::wstring(L""));
 	/**
 	 * @brief 获取指定索引为  String Utf8
 	 *
@@ -1303,7 +1271,7 @@ public:
 	 * @param defaultValue
 	 * @return string
 	 */
-	string getStringUtf8(size_t index, string defaultValue = string(""));
+	std::string getStringUtf8(size_t index, std::string defaultValue = std::string(""));
 	/**
 	 * @brief 获取指定索引为 布尔
 	 *
@@ -1320,7 +1288,7 @@ public:
 	 * @param defaultValue
 	 * @return vector<unsigned char>
 	 */
-	vector<unsigned char> getBuffer(size_t index, vector<unsigned char> defaultValue = {});
+	std::vector<unsigned char> getBuffer(size_t index, std::vector<unsigned char> defaultValue = {});
 	/**
 	 * @brief 获取指定索引为  Double
 	 *
@@ -1352,7 +1320,7 @@ public:
 	 * @param defaultValue
 	 * @return vector<string>
 	 */
-	vector<string> getArrayString(size_t index, vector<string> defaultValue = {});
+	std::vector<std::string> getArrayString(size_t index, std::vector<std::string> defaultValue = {});
 	/**
 	 * @brief 获取指定索引为 int 数组
 	 *
@@ -1360,7 +1328,7 @@ public:
 	 * @param defaultValue
 	 * @return vector<int>
 	 */
-	vector<int> getArrayInt(size_t index, vector<int> defaultValue = {});
+	std::vector<int> getArrayInt(size_t index, std::vector<int> defaultValue = {});
 	/**
 	 * @brief 获取指定索引为 utf16 数组
 	 *
@@ -1368,7 +1336,7 @@ public:
 	 * @param defaultValue
 	 * @return vector<wstring>
 	 */
-	vector<wstring> getArrayWstring(size_t index, vector<wstring> defaultValue = {});
+	std::vector<std::wstring> getArrayWstring(size_t index, std::vector<std::wstring> defaultValue = {});
 	/**
 	 * @brief 判断值是否存在
 	 *
@@ -1401,8 +1369,8 @@ public:
 	 * @return true
 	 * @return false
 	 */
-	bool eq(vector<std::tuple<size_t, js_valuetype>> eq_type, bool throw_error = false);
-	
+	bool eq(std::vector<std::tuple<size_t, js_valuetype>> eq_type, bool throw_error = false);
+
 	/**
 	 * @brief 判断当前传入的值是否是期待值
 	 *
@@ -1427,7 +1395,7 @@ public:
 	 * @return true
 	 * @return false
 	 */
-	bool eq(vector<std::tuple<size_t, napi_valuetype>> eq_type, bool throw_error = false);
+	bool eq(std::vector<std::tuple<size_t, napi_valuetype>> eq_type, bool throw_error = false);
 	/**
 	 * @brief 判断当前传入的值是否是期待值
 	 *
@@ -1435,7 +1403,7 @@ public:
 	 * @return true
 	 * @return false
 	 */
-	bool eq(size_t index, vector<js_valuetype> type_list = {}, bool throw_error = false);
+	bool eq(size_t index, std::vector<js_valuetype> type_list = {}, bool throw_error = false);
 	/**
 	 * @brief 判断当前传入的值是否是期待值
 	 *
@@ -1443,13 +1411,13 @@ public:
 	 * @return true
 	 * @return false
 	 */
-	bool eq(size_t index, vector<napi_valuetype> type_list = {}, bool throw_error = false);
+	bool eq(size_t index, std::vector<napi_valuetype> type_list = {}, bool throw_error = false);
 	/**
 	 * @brief 获取类型列表
 	 *
 	 * @return vector<js_valuetype>
 	 */
-	vector<js_valuetype> getType();
+	std::vector<js_valuetype> getType();
 	/**
 	 * @brief 获取指定索引的 类型
 	 *
@@ -1469,7 +1437,7 @@ namespace hmc_PromiseSession
 	// 任务数据容器互斥体
 	extern std::shared_mutex ____$hmcPromise_rwMutex;
 	// 任务数据容器
-	extern std::unordered_map<size_t, vector<any>> ____$hmcPromise_PromiseTaskList;
+	extern std::unordered_map<size_t, std::vector<std::any>> ____$hmcPromise_PromiseTaskList;
 	// 任务数据 已读取索引 容器
 	extern std::unordered_map<size_t, size_t> ____$hmcPromise_promise_task_id_send_index_list;
 	extern long ___$Sleep_time;
@@ -1489,21 +1457,21 @@ namespace hmc_PromiseSession
 	 * @return true
 	 * @return false
 	 */
-	extern bool send(size_t SessionId, any data = any());
+	extern bool send(size_t SessionId, std::any data = std::any());
 	/**
 	 * @brief 提交数据push进容器
 	 *
 	 * @param SessionId 任务id
 	 * @param data_list 数据
 	 */
-	extern void send(size_t SessionId, vector<any> data_list);
+	extern void send(size_t SessionId, std::vector<std::any> data_list);
 	/**
 	 * @brief 提交此ID已经完成 并在 getAll/get 后释放掉容器
 	 *
 	 * @param SessionId
 	 * @param data
 	 */
-	extern void end(size_t SessionId, any data = any());
+	extern void end(size_t SessionId, std::any data = std::any());
 	/**
 	 * @brief 判断此id是否未结束
 	 *
@@ -1530,7 +1498,7 @@ namespace hmc_PromiseSession
 	 * @param PromiseID
 	 * @return vector<any>
 	 */
-	extern vector<any> getAll(size_t PromiseID, size_t size = 999);
+	extern std::vector<std::any> getAll(size_t PromiseID, size_t size = 999);
 	extern int64_t get_next_index(size_t PromiseID);
 
 	extern size_t ___get_open_id();
@@ -1540,7 +1508,7 @@ namespace hmc_PromiseSession
 	 * @param func
 	 * @return size_t
 	 */
-	extern size_t open(std::function<void(vector<any> *data_list)> func);
+	extern size_t open(std::function<void(std::vector<std::any> *data_list)> func);
 	/**
 	 * @brief 创建一个新的任务id 并为其开辟容器 但不为其创建 变化管理线程
 	 *
@@ -1553,7 +1521,7 @@ namespace hmc_PromiseSession
 	 * @param func
 	 * @return size_t
 	 */
-	extern size_t open(std::function<any()> func);
+	extern size_t open(std::function<std::any()> func);
 	/**
 	 * @brief 在新的线程 启动一个函数 以及监听此函数的运行结束的回调
 	 *
@@ -1566,9 +1534,9 @@ namespace hmc_PromiseSession
 	extern size_t open2(_Fn &&_Fx, _Args &&..._Ax);
 
 	extern size_t max_id();
-	extern vector<int> allTasks();
-	extern vector<int> ongoingTasks();
-	extern vector<int> completeTasks();
+	extern std::vector<int> allTasks();
+	extern std::vector<int> ongoingTasks();
+	extern std::vector<int> completeTasks();
 	extern size_t get_sleep_time();
 };
 
@@ -1584,6 +1552,28 @@ extern napi_value _PromiseSession_ongoingTasks(napi_env env, napi_callback_info 
 extern napi_value _PromiseSession_allTasks(napi_env env, napi_callback_info info);
 extern napi_value _PromiseSession_completeTasks(napi_env env, napi_callback_info info);
 extern napi_value _PromiseSession_get_sleep_time(napi_env env, napi_callback_info info);
+
+class PromiseFunctionUtil
+{
+public:
+	typedef std::function<std::any(std::vector<std::any> *arguments_list)> WorkFuncType;
+	typedef std::function<napi_value(napi_env env, std::any *result_any_data)> FuncFormatResultValue;
+	typedef std::function<void(napi_env env, napi_callback_info info, std::vector<std::any> *ArgumentsList, hmc_NodeArgsValue args_value)> formatArgsCallBackType;
+	typedef std::atomic<napi_async_work> workHandle;
+	typedef std::atomic<napi_async_work> *pWorkHandle;
+	typedef std::atomic<napi_deferred> deferredHandle;
+	typedef std::atomic<napi_deferred> *pdeferredHandle;
+
+	static void exports(napi_env env, napi_value exports, std::string name, napi_callback cb);
+	static void exports(napi_env env, napi_value exports, std::string name, napi_callback cbAsync, napi_callback cbSync);
+	static void completeWork(napi_env env, napi_status status, std::atomic<napi_async_work> *work, std::atomic<napi_deferred> *deferred, std::vector<std::any> *arguments_list, std::any *resultSend, FuncFormatResultValue FormatResultValue);
+
+	// 由参数自定义格式化方法
+	static napi_value startWork(napi_env env, napi_callback_info info, std::atomic<napi_async_work> *work, std::atomic<napi_deferred> *deferred, napi_async_execute_callback execute, napi_async_complete_callback complete, std::vector<std::any> *arguments_list, std::optional<formatArgsCallBackType> formatArgsCallBack);
+	static napi_value startSync(napi_env env, napi_callback_info info, std::function<std::any(std::vector<std::any> *arguments_list)> PromiseWorkFunc, std::function<napi_value(napi_env env, std::any *result_any_data)> FormatResultValue, std::optional<formatArgsCallBackType> formatArgsCallBack);
+
+private:
+};
 
 /*
  使用宏魔法开辟一个 Promise 函数
@@ -1608,7 +1598,7 @@ napi_value fu_New_Promise_class::format_to_js_value(napi_env env, std::any resul
 */
 #define NEW_PROMISE_FUNCTION_DEFAULT_FUN                                                           \
 	std::any resultSend = std::any();                                                              \
-	std::vector<any> arguments_list = {};                                                          \
+	std::vector<std::any> arguments_list = {};                                                     \
 	napi_value format_to_js_value(napi_env env, std::any result_any_data);                         \
 	std::any PromiseWorkFunc(std::vector<std::any> arguments_list);                                \
 	class PromiseFunction                                                                          \
@@ -1706,7 +1696,7 @@ napi_value fu_New_Promise_class::format_to_js_value(napi_env env, std::any resul
 			napi_get_null(env, &result);                                                           \
 			std::any resultSend = std::any();                                                      \
 			auto input = hmc_NodeArgsValue(env, info).get_values();                                \
-			std::vector<any> arguments_list$SP = {};                                               \
+			std::vector<std::any> arguments_list$SP = {};                                          \
 			for (size_t i = 0; i < input.size(); i++)                                              \
 			{                                                                                      \
 				arguments_list$SP.push_back(input.at(i));                                          \
@@ -1741,7 +1731,7 @@ napi_value fu_New_Promise_class::format_to_js_value(napi_env env, std::any resul
 
 #define NEW_PROMISE_FUNCTION_DEFAULT_FUN$SP                                                        \
 	std::any resultSend = std::any();                                                              \
-	std::vector<any> arguments_list = {};                                                          \
+	std::vector<std::any> arguments_list = {};                                                     \
 	napi_value format_to_js_value(napi_env env, std::any result_any_data);                         \
 	std::any PromiseWorkFunc(std::vector<std::any> arguments_list);                                \
 	void startWorkSession(size_t resultSendSessionID, std::vector<any> arguments_list$SP)          \
@@ -1888,17 +1878,17 @@ napi_value fu_New_Promise_class::format_to_js_value(napi_env env, std::any resul
 
 #define NEW_PROMISE_FUNCTION_DEFAULT_FUN$SP$ARG                                                                                        \
 	std::any resultSend = std::any();                                                                                                  \
-	std::vector<any> arguments_list = {};                                                                                              \
+	std::vector<std::any> arguments_list = {};                                                                                         \
 	napi_value format_to_js_value(napi_env env, std::any result_any_data);                                                             \
 	void format_arguments_value(napi_env env, napi_callback_info info, std::vector<any> &ArgumentsList, hmc_NodeArgsValue args_value); \
 	std::any PromiseWorkFunc(std::vector<std::any> arguments_list);                                                                    \
 	void startWorkSession(size_t resultSendSessionID, std::vector<any> arguments_list$SP)                                              \
 	{                                                                                                                                  \
-		thread([resultSendSessionID, arguments_list$SP]()                                                                              \
-			   {\
+		std::thread([resultSendSessionID, arguments_list$SP]()                                                                         \
+					{\
         auto data = PromiseWorkFunc(arguments_list$SP);\
         hmc_PromiseSession::send(resultSendSessionID, data);\
-        hmc_PromiseSession::end(resultSendSessionID); })                                                                                                                    \
+        hmc_PromiseSession::end(resultSendSessionID); })                                                                                                               \
 			.detach();                                                                                                                 \
 	}                                                                                                                                  \
 	class PromiseFunction                                                                                                              \
@@ -2028,4 +2018,30 @@ napi_value fu_New_Promise_class::format_to_js_value(napi_env env, std::any resul
 	{                                                                                                                                  \
 		(new PromiseFunction)->exportsSync(env, exports, name.c_str());                                                                \
 	}
+
+#define NEW_PROMISE_FUNCTION2_DEFAULT_FUN                                                                                                   \
+	napi_value FormatResultValue(napi_env env, std::any *result_any_data);                                                                  \
+	std::any PromiseWorkFunc(std::vector<std::any> *arguments_list);                                                                        \
+	void AddArgsToCallBack(napi_env env, napi_callback_info info, std::vector<std::any> *ArgumentsList, hmc_NodeArgsValue input);           \
+	std::any resultSend = std::any();                                                                                                       \
+	std::vector<std::any> arguments_list = {};                                                                                              \
+	std::atomic<napi_async_work> work = NULL;                                                                                               \
+	std::atomic<napi_deferred> deferred = NULL;                                                                                             \
+	void asyncWorkFun(napi_env env, void *data)                                                                                             \
+	{                                                                                                                                       \
+		resultSend = PromiseWorkFunc(&arguments_list);    \                                                                                                                                 \
+	}                                                                                                                                       \
+	void completeWork(napi_env env, napi_status status, void *data)                                                                         \
+	{                                                                                                                                       \
+		return PromiseFunctionUtil::completeWork(env, status, &work, &deferred, &arguments_list, &resultSend, FormatResultValue);           \
+	}                                                                                                                                       \
+	napi_value startWork(napi_env env, napi_callback_info info)                                                                             \
+	{                                                                                                                                       \
+		return PromiseFunctionUtil::startWork(env, info, &work, &deferred, asyncWorkFun, completeWork, &arguments_list, AddArgsToCallBack); \
+	}                                                                                                                                       \
+	napi_value startSync(napi_env env, napi_callback_info info)                                                                             \
+	{                                                                                                                                       \
+		return PromiseFunctionUtil::startSync(env, info, PromiseWorkFunc, FormatResultValue, AddArgsToCallBack);                            \
+	}
+
 #endif // MODE_INTERNAL_INCLUDE_HMC_NAPI_VALUE_UTIL_HPP

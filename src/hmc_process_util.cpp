@@ -61,6 +61,23 @@ hmc_process_util::openProcessToken::~openProcessToken()
     }
 }
 
+hmc_process_util::openProcessToken::openProcessToken(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwProcessId)
+{
+
+    GpHProcess = ::OpenProcess(dwDesiredAccess, bInheritHandle, dwProcessId);
+
+    // 复核 防止句柄获取异常
+    DWORD review_pid = GetProcessId(GpHProcess);
+
+    if (review_pid != dwProcessId)
+    {
+        GpHProcess = NULL;
+        return;
+    }
+
+    GpProcessId = review_pid;
+}
+
 hmc_process_util::openProcessToken::openProcessToken(DWORD ProcessId, bool isEnableShutDownPriv)
 {
 
@@ -443,19 +460,23 @@ ULONGLONG hmc_process_util::getProcessStartTime(DWORD processID)
 
     ULONGLONG elapsedTime = 0;
 
-    auto hProcess = openProcessToken(processID);
+    auto hProcess = hmc_process_util::openProcessToken(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, processID);
 
-    if (!hProcess)
+    if (&hProcess == NULL)
     {
         return elapsedTime;
     }
 
-    FILETIME createTime, exitTime, kernelTime, userTime;
-    if (::GetProcessTimes(&hProcess, &createTime, &exitTime, &kernelTime, &userTime))
+    FILETIME creation_time;
+    FILETIME exit_time;
+    FILETIME kernel_time;
+    FILETIME user_time;
+
+    if (::GetProcessTimes(hProcess, &creation_time, &exit_time, &kernel_time, &user_time))
     {
         ULARGE_INTEGER startTime;
-        startTime.LowPart = createTime.dwLowDateTime;
-        startTime.HighPart = createTime.dwHighDateTime;
+        startTime.LowPart = creation_time.dwLowDateTime;
+        startTime.HighPart = creation_time.dwHighDateTime;
 
         // 获取当前系统时间
         FILETIME currentTime;
@@ -473,7 +494,6 @@ ULONGLONG hmc_process_util::getProcessStartTime(DWORD processID)
 
     return elapsedTime;
 }
-
 hmc_process_util::ch_PSYSTEM_PROCESS_INFORMATION::ch_PSYSTEM_PROCESS_INFORMATION(PSYSTEM_PROCESS_INFORMATION processInfo)
 {
     ImageName = hmc_util::unicodeStringToWString(processInfo->ImageName);
@@ -994,6 +1014,27 @@ namespace hmc_process_util
             }
         }
 
+        // 通常情况下 模块0会是此可执行文件的路径
+        if (buf_length == 0)
+        {
+            auto modes = hmc_process_util::getProcessModuleList(processID);
+
+            // is d:\\13\\hmc.exe == hmc.exe   condition->  <hmc.exe>
+            if (!modes.empty() && !modes[0].empty())
+            {
+                std::wstring mode = modes[0];
+                auto processName = GpGetProcessNameEx(processID);
+                auto processNameM = hmc_util::getBaseName(mode);
+                hmc_util::removeAllCharPtr(processName, '\0');
+                hmc_util::removeAllCharPtr(processNameM, '\0');
+
+                if (processName.size() == processNameM.size() && processName == processNameM)
+                {
+                    return mode;
+                }
+            }
+        }
+
         hmc_util::removeAllCharPtr(result, L'\0');
 
         // 返回单名称
@@ -1009,6 +1050,24 @@ namespace hmc_process_util
         return result;
     }
 
+}
+
+std::vector<std::wstring> hmc_process_util::commandLineToList(std::wstring commandLine)
+{
+    std::vector<std::wstring> result;
+    LPWSTR CommandLine = GetCommandLineW();
+
+    int argc = 0;
+    int argument_count = 0;
+    std::unique_ptr<wchar_t *[], LocalFreeDeleter> argv(::CommandLineToArgvW(commandLine.c_str() + '\0', &argument_count));
+
+    for (size_t i = 0; i < argument_count; i++)
+    {
+        auto &&argument = argv[i];
+        result.push_back(argument);
+    }
+
+    return result;
 }
 
 void hmc_process_util::CpGetProcessCwdPath::initializeNtCall()
@@ -1483,6 +1542,15 @@ namespace hmc_process_util
     {
         std::wstring result = L"";
 
+        if (pid == ::_getpid())
+        {
+            auto commandLine = ::GetCommandLineW();
+            if (commandLine != nullptr)
+            {
+                return commandLine;
+            }
+        }
+
         try
         {
             long status = 0;
@@ -1524,4 +1592,89 @@ namespace hmc_process_util
         return result;
     }
 
+}
+
+std::vector<std::wstring> hmc_process_util::getExecutableCwdList(DWORD processID)
+{
+    std::set<std::wstring> set_result;
+    std::wstring temp = getProcessCwdPath(processID);
+    if (!temp.empty())
+    {
+        if (temp.back() == '\\' || temp.back() == '/')
+        {
+            temp.pop_back();
+        }
+
+        set_result.insert(std::move(temp));
+    }
+
+    std::wstring cmdLines = hmc_process_util::getProcessCommandLine(processID);
+
+    if (!cmdLines.empty())
+    {
+
+        std::vector<std::wstring> data_list = hmc_process_util::commandLineToList(cmdLines);
+
+        if (data_list.empty() && !data_list[0].empty())
+        {
+            std::wstring Mode0 = data_list.at(0);
+
+            std::size_t pos = Mode0.find_last_of('\\');
+
+            if (pos == std::wstring::npos)
+            {
+                pos = Mode0.find_last_of('/');
+            }
+
+            if (pos != std::wstring::npos)
+            {
+                auto temp = std::wstring(Mode0.begin(), Mode0.begin() + pos);
+                if (!temp.empty())
+                {
+                    // temp.push_back('\\');
+                    set_result.insert(std::move(temp));
+                }
+            }
+        }
+    }
+
+    auto exeFile = hmc_process_util::getProcessFilePath(processID, false, false);
+    if (!exeFile.empty())
+    {
+        std::size_t pos = exeFile.find_last_of('\\');
+
+        if (pos == std::wstring::npos)
+        {
+            pos = exeFile.find_last_of('/');
+        }
+
+        if (pos != std::wstring::npos)
+        {
+            auto temp = std::wstring(exeFile.begin(), exeFile.begin() + pos);
+            if (!temp.empty())
+            {
+                // temp.push_back('\\');
+                set_result.insert(std::move(temp));
+            }
+        }
+    }
+
+    std::vector<std::wstring> result;
+    for (auto temp : set_result)
+    {
+        if (temp.empty())
+        {
+            continue;
+        }
+
+        while (temp.back() == '\\' || temp.back() == '/')
+        {
+            temp.pop_back();
+        };
+
+        temp.push_back('\\');
+        result.push_back(temp);
+    }
+
+    return result;
 }

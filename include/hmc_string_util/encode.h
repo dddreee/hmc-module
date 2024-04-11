@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file hmc_string_util.h
  * @author kiic
  * @brief 本模块是文本处理相关功能的合集

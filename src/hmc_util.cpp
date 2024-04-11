@@ -231,7 +231,8 @@ inline std::wstring hmc_util::vec2ar(std::vector<std::wstring> input)
     {
         auto it = &input[i];
         result.append(it->begin(), it->end());
-        if(i+1 < count){
+        if (i + 1 < count)
+        {
             result.push_back(L',');
         }
     }
@@ -262,7 +263,8 @@ inline std::string hmc_util::vec2ar(std::vector<std::string> input)
     {
         auto it = &input[i];
         result.append(it->begin(), it->end());
-         if(i+1 < count){
+        if (i + 1 < count)
+        {
             result.push_back(',');
         }
     }
@@ -271,3 +273,142 @@ inline std::string hmc_util::vec2ar(std::vector<std::string> input)
 
     return result;
 }
+
+inline bool hmc_util::is_utf8(const std::string input)
+{
+    for (std::string::const_iterator str = input.begin(), eos = input.end(); str != eos; ++str)
+    {
+        std::uint8_t cuChar = static_cast<std::uint8_t>(*str);
+        size_t len = sizeof(cuChar);
+        if (cuChar == '\b' || cuChar == '\n' || cuChar == '\r' || cuChar == '\f' || cuChar == '\t')
+        {
+            // 转义符
+        }
+        // 超出utf8的大小了
+        else if (static_cast<std::uint8_t>(cuChar) >= 0xF8)
+            return false;
+
+        else if (static_cast<std::uint8_t>(cuChar) >= 0xF0)
+        {
+            if (len < 4)
+                return false;
+            for (int i = 1; i <= 3; i++)
+            {
+                std::uint8_t diff_cuChar = (cuChar + i);
+
+                if ((diff_cuChar & 0xC0) != 0x80)
+                    return false;
+            }
+            return true;
+        }
+        else if (static_cast<std::uint8_t>(cuChar) >= 0xE0)
+        {
+            if (len < 3)
+                return false;
+            for (int i = 1; i <= 2; i++)
+            {
+                std::uint8_t diff_cuChar = (cuChar + i);
+
+                if ((diff_cuChar & 0xC0) != 0x80)
+                    return false;
+            }
+            return true;
+        }
+        else if (static_cast<std::uint8_t>(cuChar) >= 0xC0)
+        {
+
+            if (len < 2)
+                return false;
+            std::uint8_t diff_cuChar = (cuChar + 1);
+
+            if ((diff_cuChar & 0xC0) != 0x80)
+                return false;
+            return true;
+        }
+        else if (static_cast<std::uint8_t>(cuChar) >= 0x80)
+            return false;
+        else
+            return true;
+    }
+    return true;
+}
+
+DWORD hmc_util::toThreadId(std::thread::id thread_id)
+{
+    DWORD ThreadIdAsInt = 0;
+
+    try
+    {
+        ThreadIdAsInt = *static_cast<DWORD *>(static_cast<void *>(&thread_id));
+    }
+    catch (...)
+    {
+        auto data = std::hash<std::thread::id>()(thread_id);
+        ThreadIdAsInt = static_cast<DWORD>(data);
+    }
+
+    return ThreadIdAsInt;
+}
+
+std::string hmc_util::getBaseName(const std::string path)
+{
+    std::string result = std::string();
+
+    size_t length = path.size();
+
+    for (int i = length - 1; i >= 0; i--)
+    {
+        auto it = path.at(i);
+
+        if (it == '\\' || it == '/') {
+            break;
+        }
+
+        result.insert(0, 1, it);
+    }
+
+    return result;
+}
+
+std::wstring hmc_util::getBaseName(const std::wstring path)
+{
+    std::wstring result = std::wstring();
+
+    size_t length = path.size();
+
+    for (int i = length - 1; i >= 0; i--)
+    {
+        auto it = path.at(i);
+
+        if (it == '\\' || it == '/') {
+            break;
+        }
+
+        result.insert(0, 1, it);
+    }
+
+    return result;
+}
+
+
+
+bool hmc_util::diffBaseName(const std::string path1, const std::string path2)
+{
+    bool result = false;
+    std::vector<std::string> baseNameList;
+    baseNameList.push_back(std::string(path1.end(), path1.end()));
+    baseNameList.push_back(std::string(path2.end(), path2.end()));
+
+    return result;
+}
+
+bool hmc_util::diffBaseName(const std::wstring path1, const std::wstring path2)
+{
+    bool result = false;
+    std::vector<std::wstring> baseNameList;
+    baseNameList.push_back(std::wstring(path1.end(), path1.end()));
+    baseNameList.push_back(std::wstring(path2.end(), path2.end()));
+
+    return result;
+}
+
