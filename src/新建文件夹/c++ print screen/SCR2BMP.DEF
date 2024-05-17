@@ -1,0 +1,11 @@
+;-----------------------------
+; SCR2BMP.DEF
+;-----------------------------
+
+NAME        SCR2BMP
+
+DESCRIPTION 'SCREEN TO BITMAP FILE COMMAND (C) J Lusa Computing LLC 2008'
+EXETYPE     WINDOWS
+CODE        PRELOAD MOVEABLE DISCARDABLE
+DATA        PRELOAD MOVEABLE MULTIPLE
+
