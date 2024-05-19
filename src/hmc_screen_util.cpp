@@ -41,104 +41,94 @@ bool hmc_screen_util::captureBmpToFile(std::variant<std::string, std::wstring> o
     try
     {
 
-        // 获取屏幕DC
-        HDC hScreenDC = ::CreateDC(TEXT("DISPLAY"), NULL, NULL, NULL);
+        // 处理矩形宽高过低
+        HDC hScreenDC_g = ::CreateDC(TEXT("DISPLAY"), NULL, NULL, NULL);
         // 获取屏幕分辨率
-        if (nScopeWidth == 0 || nScopeWidth == NULL)
+        if (nScopeWidth <= 0 || nScopeWidth == NULL)
         {
-            nScopeWidth = ::GetDeviceCaps(hScreenDC, HORZRES);
+            nScopeWidth = ::GetDeviceCaps(hScreenDC_g, HORZRES);
         }
-        if (nScopeHeight == 0 || nScopeHeight == NULL)
+        if (nScopeHeight <= 0 || nScopeHeight == NULL)
         {
-            nScopeHeight = ::GetDeviceCaps(hScreenDC, VERTRES);
-        }
-        // 创建与屏幕DC兼容的内存DC
-        HDC hMemoryDC = ::CreateCompatibleDC(hScreenDC);
-        // 创建位图对象
-        HBITMAP hBitmap = ::CreateCompatibleBitmap(hScreenDC, nScopeWidth, nScopeHeight);
-        // 将位图选入内存DC中
-        HBITMAP hOldBitmap = (HBITMAP)::SelectObject(hMemoryDC, hBitmap);
-        // 将屏幕内容拷贝到内存DC中
-        ::BitBlt(hMemoryDC, 0, 0, nScopeWidth, nScopeHeight, hScreenDC, upperLeftX, upperLeftY, SRCCOPY);
-        // 将位图保存为文件
-        PBITMAPINFO pBitmapInfo = (PBITMAPINFO) new char[sizeof(BITMAPINFOHEADER)];
-        ::memset(pBitmapInfo, 0, sizeof(BITMAPINFOHEADER));
-        pBitmapInfo->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-        pBitmapInfo->bmiHeader.biWidth = nScopeWidth;
-        pBitmapInfo->bmiHeader.biHeight = nScopeHeight;
-        pBitmapInfo->bmiHeader.biPlanes = 1;
-        pBitmapInfo->bmiHeader.biBitCount = 24;
-        pBitmapInfo->bmiHeader.biCompression = BI_RGB;
-        pBitmapInfo->bmiHeader.biSizeImage = nScopeWidth * nScopeHeight * 3;
-        char *pData = NULL;
-
-        std::shared_ptr<void> _shared_close_Library_hMemoryDC(nullptr, [&](void *)
-                                                              {
-            try
-        {
-                ::SelectObject(hMemoryDC, hOldBitmap);
-                ::DeleteDC(hScreenDC);
-                ::DeleteDC(hMemoryDC);
-                ::DeleteObject(hBitmap);
-        }
-            catch (...) {} });
-
-        HGLOBAL hGlobal = ::GlobalAlloc(GMEM_MOVEABLE, pBitmapInfo->bmiHeader.biSizeImage);
-
-        if (hGlobal == NULL)
-        {
-            return false;
+            nScopeHeight = ::GetDeviceCaps(hScreenDC_g, VERTRES);
         }
 
-        std::shared_ptr<void> _shared_close_Library_hGlobal(nullptr, [&](void *)
-                                                            {
-            try
-            {
-                ::GlobalUnlock(hGlobal);
-                ::GlobalFree(hGlobal);
-            }
-            catch (...) {} });
+        // 获取屏幕设备上下文
+        HDC hScreenDC = GetDC(NULL);
+        // 创建兼容的内存设备上下文
+        HDC hMemoryDC = CreateCompatibleDC(hScreenDC);
 
-        pData = (char *)::GlobalLock(hGlobal);
+        // 创建兼容的位图
+        HBITMAP hBitmap = CreateCompatibleBitmap(hScreenDC, nScopeWidth, nScopeHeight);
+        HGDIOBJ hOldBitmap = SelectObject(hMemoryDC, hBitmap);
 
-        if (pData == NULL)
-        {
+        // 将屏幕内容拷贝到内存设备上下文中
+        BitBlt(hMemoryDC, 0, 0, nScopeWidth, nScopeHeight, hScreenDC, upperLeftX, upperLeftY, SRCCOPY);
 
-            return false;
-        }
+        // 保存位图到文件
+        BITMAPFILEHEADER fileHeader;
+        BITMAPINFOHEADER infoHeader;
+        BITMAP bitmap;
 
-        ::GetDIBits(hMemoryDC, hBitmap, 0, nScopeHeight, pData, pBitmapInfo, DIB_RGB_COLORS);
-        DWORD dwBytesWritten = 0;
-        BITMAPFILEHEADER bmfHeader;
-        bmfHeader.bfType = 0x4d42;
-        bmfHeader.bfOffBits = sizeof(BITMAPFILEHEADER) + pBitmapInfo->bmiHeader.biSize;
-        bmfHeader.bfSize = bmfHeader.bfOffBits + pBitmapInfo->bmiHeader.biSizeImage;
+        // 获取位图信息
+        GetObject(hBitmap, sizeof(BITMAP), &bitmap);
 
+        DWORD dwBmpSize = ((bitmap.bmWidth * bitmap.bmBitsPixel + 31) / 32) * 4 * bitmap.bmHeight;
+        HANDLE hDIB = GlobalAlloc(GHND, dwBmpSize + sizeof(BITMAPINFOHEADER) + sizeof(BITMAPFILEHEADER));
+        char *lpbitmap = (char *)GlobalLock(hDIB);
+
+        // 设置文件头
+        fileHeader.bfType = 0x4D42; // 'BM'
+        fileHeader.bfSize = dwBmpSize + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+        fileHeader.bfReserved1 = 0;
+        fileHeader.bfReserved2 = 0;
+        fileHeader.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+
+        // 设置信息头
+        infoHeader.biSize = sizeof(BITMAPINFOHEADER);
+        infoHeader.biWidth = bitmap.bmWidth;
+        infoHeader.biHeight = bitmap.bmHeight;
+        infoHeader.biPlanes = 1;
+        infoHeader.biBitCount = bitmap.bmBitsPixel;
+        infoHeader.biCompression = BI_RGB;
+        infoHeader.biSizeImage = 0;
+        infoHeader.biXPelsPerMeter = 0;
+        infoHeader.biYPelsPerMeter = 0;
+        infoHeader.biClrUsed = 0;
+        infoHeader.biClrImportant = 0;
+
+        // 拷贝位图数据
+        memcpy(lpbitmap, &fileHeader, sizeof(BITMAPFILEHEADER));
+        memcpy(lpbitmap + sizeof(BITMAPFILEHEADER), &infoHeader, sizeof(BITMAPINFOHEADER));
+        GetDIBits(hMemoryDC, hBitmap, 0, (UINT)bitmap.bmHeight, lpbitmap + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER), (BITMAPINFO *)&infoHeader, DIB_RGB_COLORS);
+
+        // 写入文件
         if (std::holds_alternative<std::wstring>(output))
         {
-            // 创建文件句柄
-            HANDLE hFile = ::CreateFileW(std::get<std::wstring>(output).c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-            // 写入魔术头
-            ::WriteFile(hFile, &bmfHeader, sizeof(bmfHeader), &dwBytesWritten, NULL);
-            // 写入bmp文件头
-            ::WriteFile(hFile, pBitmapInfo, sizeof(BITMAPINFOHEADER), &dwBytesWritten, NULL);
-            // 写入bmp内容
-            ::WriteFile(hFile, pData, pBitmapInfo->bmiHeader.biSizeImage, &dwBytesWritten, NULL);
-            ::CloseHandle(hFile);
+            HANDLE hFile = CreateFileW(std::get<std::wstring>(output).c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+            DWORD dwBytesWritten;
+            WriteFile(hFile, lpbitmap, dwBmpSize + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER), &dwBytesWritten, NULL);
+            CloseHandle(hFile);
         }
         else if (std::holds_alternative<std::string>(output))
         {
-            HANDLE hFile = ::CreateFileA(std::get<std::string>(output).c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-            ::WriteFile(hFile, &bmfHeader, sizeof(bmfHeader), &dwBytesWritten, NULL);
-            ::WriteFile(hFile, pBitmapInfo, sizeof(BITMAPINFOHEADER), &dwBytesWritten, NULL);
-            ::WriteFile(hFile, pData, pBitmapInfo->bmiHeader.biSizeImage, &dwBytesWritten, NULL);
-            ::CloseHandle(hFile);
+            HANDLE hFile = CreateFileA(std::get<std::string>(output).c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+            DWORD dwBytesWritten;
+            WriteFile(hFile, lpbitmap, dwBmpSize + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER), &dwBytesWritten, NULL);
+            CloseHandle(hFile);
         }
 
+        // 清理
+        GlobalUnlock(hDIB);
+        GlobalFree(hDIB);
+        SelectObject(hMemoryDC, hOldBitmap);
+        DeleteObject(hBitmap);
+        DeleteDC(hMemoryDC);
+        ReleaseDC(NULL, hScreenDC);
     }
     catch (...)
     {
-      
+
         return false;
     }
     return true;
@@ -149,111 +139,82 @@ bool hmc_screen_util::captureBmpToBuffer(std::vector<std::uint8_t> &output, int 
     try
     {
 
-        // 获取屏幕DC
-        HDC hScreenDC = ::CreateDC(TEXT("DISPLAY"), NULL, NULL, NULL);
+        // 处理矩形宽高过低
+        HDC hScreenDC_g = ::CreateDC(TEXT("DISPLAY"), NULL, NULL, NULL);
         // 获取屏幕分辨率
-        if (nScopeWidth == 0 || nScopeWidth == NULL)
+        if (nScopeWidth <= 0 || nScopeWidth == NULL)
         {
-            nScopeWidth = ::GetDeviceCaps(hScreenDC, HORZRES);
+            nScopeWidth = ::GetDeviceCaps(hScreenDC_g, HORZRES);
         }
-        if (nScopeHeight == 0 || nScopeHeight == NULL)
+        if (nScopeHeight <= 0 || nScopeHeight == NULL)
         {
-            nScopeHeight = ::GetDeviceCaps(hScreenDC, VERTRES);
-        }
-        // 创建与屏幕DC兼容的内存DC
-        HDC hMemoryDC = ::CreateCompatibleDC(hScreenDC);
-        // 创建位图对象
-        HBITMAP hBitmap = ::CreateCompatibleBitmap(hScreenDC, nScopeWidth, nScopeHeight);
-        // 将位图选入内存DC中
-        HBITMAP hOldBitmap = (HBITMAP)::SelectObject(hMemoryDC, hBitmap);
-        // 将屏幕内容拷贝到内存DC中
-        ::BitBlt(hMemoryDC, 0, 0, nScopeWidth, nScopeHeight, hScreenDC, upperLeftX, upperLeftY, SRCCOPY);
-        // 将位图保存为文件
-        PBITMAPINFO pBitmapInfo = (PBITMAPINFO) new char[sizeof(BITMAPINFOHEADER)];
-        ::memset(pBitmapInfo, 0, sizeof(BITMAPINFOHEADER));
-        pBitmapInfo->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-        pBitmapInfo->bmiHeader.biWidth = nScopeWidth;
-        pBitmapInfo->bmiHeader.biHeight = nScopeHeight;
-        pBitmapInfo->bmiHeader.biPlanes = 1;
-        pBitmapInfo->bmiHeader.biBitCount = 24;
-        pBitmapInfo->bmiHeader.biCompression = BI_RGB;
-        pBitmapInfo->bmiHeader.biSizeImage = nScopeWidth * nScopeHeight * 3;
-        char *pData = NULL;
-
-        std::shared_ptr<void> _shared_close_Library_hMemoryDC(nullptr, [&](void *)
-                                                              {
-            try
-        {
-                ::SelectObject(hMemoryDC, hOldBitmap);
-                ::DeleteDC(hScreenDC);
-                ::DeleteDC(hMemoryDC);
-                ::DeleteObject(hBitmap);
-        }
-            catch (...) {} });
-
-        HGLOBAL hGlobal = ::GlobalAlloc(GMEM_MOVEABLE, pBitmapInfo->bmiHeader.biSizeImage);
-
-        if (hGlobal == NULL)
-        {
-            return false;
+            nScopeHeight = ::GetDeviceCaps(hScreenDC_g, VERTRES);
         }
 
-        std::shared_ptr<void> _shared_close_Library_hGlobal(nullptr, [&](void *)
-                                                            {
-            try
-            {
-                ::GlobalUnlock(hGlobal);
-                ::GlobalFree(hGlobal);
-            }
-            catch (...) {} });
+        // 获取屏幕设备上下文
+        HDC hScreenDC = GetDC(NULL);
+        // 创建兼容的内存设备上下文
+        HDC hMemoryDC = CreateCompatibleDC(hScreenDC);
 
-        pData = (char *)::GlobalLock(hGlobal);
+        // 创建兼容的位图
+        HBITMAP hBitmap = CreateCompatibleBitmap(hScreenDC, nScopeWidth, nScopeHeight);
+        HGDIOBJ hOldBitmap = SelectObject(hMemoryDC, hBitmap);
 
-        if (pData == NULL)
+        // 将屏幕内容拷贝到内存设备上下文中
+        BitBlt(hMemoryDC, 0, 0, nScopeWidth, nScopeHeight, hScreenDC, upperLeftX, upperLeftY, SRCCOPY);
+
+        // 保存位图到文件
+        BITMAPFILEHEADER fileHeader;
+        BITMAPINFOHEADER infoHeader;
+        BITMAP bitmap;
+
+        // 获取位图信息
+        GetObject(hBitmap, sizeof(BITMAP), &bitmap);
+
+        DWORD dwBmpSize = ((bitmap.bmWidth * bitmap.bmBitsPixel + 31) / 32) * 4 * bitmap.bmHeight;
+        HANDLE hDIB = GlobalAlloc(GHND, dwBmpSize + sizeof(BITMAPINFOHEADER) + sizeof(BITMAPFILEHEADER));
+        char *lpbitmap = (char *)GlobalLock(hDIB);
+
+        // 设置文件头
+        fileHeader.bfType = 0x4D42; // 'BM'
+        fileHeader.bfSize = dwBmpSize + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+        fileHeader.bfReserved1 = 0;
+        fileHeader.bfReserved2 = 0;
+        fileHeader.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+
+        // 设置信息头
+        infoHeader.biSize = sizeof(BITMAPINFOHEADER);
+        infoHeader.biWidth = bitmap.bmWidth;
+        infoHeader.biHeight = bitmap.bmHeight;
+        infoHeader.biPlanes = 1;
+        infoHeader.biBitCount = bitmap.bmBitsPixel;
+        infoHeader.biCompression = BI_RGB;
+        infoHeader.biSizeImage = 0;
+        infoHeader.biXPelsPerMeter = 0;
+        infoHeader.biYPelsPerMeter = 0;
+        infoHeader.biClrUsed = 0;
+        infoHeader.biClrImportant = 0;
+
+        // 拷贝位图数据
+        memcpy(lpbitmap, &fileHeader, sizeof(BITMAPFILEHEADER));
+        memcpy(lpbitmap + sizeof(BITMAPFILEHEADER), &infoHeader, sizeof(BITMAPINFOHEADER));
+        GetDIBits(hMemoryDC, hBitmap, 0, (UINT)bitmap.bmHeight, lpbitmap + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER), (BITMAPINFO *)&infoHeader, DIB_RGB_COLORS);
+
+        size_t bitmap_length = dwBmpSize + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+
+        output.reserve(bitmap_length);
+        for (size_t i = 0; i < bitmap_length; i++)
         {
-
-            return false;
+            output.push_back(lpbitmap[i]);
         }
 
-        ::GetDIBits(hMemoryDC, hBitmap, 0, nScopeHeight, pData, pBitmapInfo, DIB_RGB_COLORS);
-        DWORD dwBytesWritten = 0;
-        BITMAPFILEHEADER bmfHeader;
-        bmfHeader.bfType = 0x4d42;
-        bmfHeader.bfOffBits = sizeof(BITMAPFILEHEADER) + pBitmapInfo->bmiHeader.biSize;
-        bmfHeader.bfSize = bmfHeader.bfOffBits + pBitmapInfo->bmiHeader.biSizeImage;
-
-        output.clear();
-        output.reserve(bmfHeader.bfSize);
-
-        // 写入魔术头
-        char *bmfHeader_Temp = (char *)&bmfHeader;
-
-        if (bmfHeader_Temp != NULL)
-        {
-            for (size_t i = 0; i < sizeof(bmfHeader); i++)
-            {
-                output.push_back(bmfHeader_Temp[i]);
-            }
-        }
-
-        // 写入魔术头
-        char *pBitmapInfo_Temp = (char *)pBitmapInfo;
-
-        if (pBitmapInfo_Temp != NULL)
-        {
-            for (size_t i = 0; i < sizeof(BITMAPINFOHEADER); i++)
-            {
-                output.push_back(pBitmapInfo_Temp[i]);
-            }
-        }
-
-        if (pData != NULL)
-        {
-            for (size_t i = 0; i < pBitmapInfo->bmiHeader.biSizeImage; i++)
-            {
-                output.push_back(pData[i]);
-            }
-        }
+        // 清理
+        GlobalUnlock(hDIB);
+        GlobalFree(hDIB);
+        SelectObject(hMemoryDC, hOldBitmap);
+        DeleteObject(hBitmap);
+        DeleteDC(hMemoryDC);
+        ReleaseDC(NULL, hScreenDC);
     }
     catch (...)
     {

@@ -256,10 +256,10 @@ bool hmc_clip_util::SetClipboardPathList(const std::vector<std::wstring> &PathLi
         std::shared_ptr<void> shared_close_Free_Auto_(nullptr, [&](void *)
                                                       {
                  if (handle != NULL) {
-                     GlobalFree(handle);
+                     ::GlobalFree(handle);
                      handle = NULL;
                  }
-                 CloseClipboard(); });
+                 ::CloseClipboard(); });
 
         if (!::EmptyClipboard())
         {
@@ -321,7 +321,7 @@ bool hmc_clip_util::SetClipboardPathList(const std::vector<std::wstring> &PathLi
         ((DROPFILES *)pDropFiles)->fWide = TRUE;
 
         LPBYTE pData = (LPBYTE)pDropFiles + sizeof(DROPFILES);
-        memcpy(pData, (LPBYTE)PathList2Str.data(), PathList2Str.size() * sizeof(wchar_t));
+        ::memcpy(pData, (LPBYTE)PathList2Str.data(), PathList2Str.size() * sizeof(wchar_t));
 
         ::GlobalUnlock(handle);
 

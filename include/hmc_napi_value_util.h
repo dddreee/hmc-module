@@ -2029,7 +2029,7 @@ napi_value fu_New_Promise_class::format_to_js_value(napi_env env, std::any resul
 	std::atomic<napi_deferred> deferred = NULL;                                                                                             \
 	void asyncWorkFun(napi_env env, void *data)                                                                                             \
 	{                                                                                                                                       \
-		resultSend = PromiseWorkFunc(&arguments_list);    \                                                                                                                                 \
+		resultSend = PromiseWorkFunc(&arguments_list);                                                                                      \
 	}                                                                                                                                       \
 	void completeWork(napi_env env, napi_status status, void *data)                                                                         \
 	{                                                                                                                                       \
@@ -2045,3 +2045,117 @@ napi_value fu_New_Promise_class::format_to_js_value(napi_env env, std::any resul
 	}
 
 #endif // MODE_INTERNAL_INCLUDE_HMC_NAPI_VALUE_UTIL_HPP
+
+
+/*
+
+
+
+namespace ExpShowContextMenu
+{
+    NEW_PROMISE_FUNCTION2_DEFAULT_FUN;
+
+    void ExpShowContextMenu::AddArgsToCallBack(napi_env env, napi_callback_info info, std::vector<std::any> *ArgumentsList, hmc_NodeArgsValue input)
+    {
+        // showContextMenu(hwnd:number, filePath:string|string[], x?:number|null, y?:number|null);
+        input.eq(0, {js_null, js_number, js_bigint}, true);
+        input.eq(1, {js_string, js_array}, true);
+
+        // hwnd:number
+        int64_t ihwnd = at_Number64Or(0, 0);
+
+        HWND hwnd = ihwnd <= 0 ? ::GetForegroundWindow() : (HWND)ihwnd;
+        std::variant<std::wstring, std::vector<std::wstring>> filePath;
+        int x = 0;
+        int y = 0;
+
+        // filePath:string|string[]
+        if (input.eq(1, js_string, false))
+        {
+            filePath = input.getStringWide(1);
+        }
+        else
+        {
+            filePath = input.getArrayWstring(1);
+        }
+
+        // x?:number|null, y?:number|null
+
+        POINT point = {0};
+
+        if (input.eq({{2, js_number}}, false))
+        {
+            x = input.getInt(2, 0);
+        }
+
+        if (input.eq({{3, js_number}}, false))
+        {
+            y = input.getInt(2, 0);
+        }
+
+        if (x + y == 0)
+        {
+            POINT point;
+            ::GetCursorPos(&point);
+            x = point.x;
+            y = point.y;
+        }
+
+        ArgumentsList->push_back(hwnd);
+
+        if (std::holds_alternative<std::wstring>(filePath))
+        {
+            ArgumentsList->push_back(std::get<std::wstring>(filePath));
+        }
+        else
+        {
+            ArgumentsList->push_back(std::get<std::vector<std::wstring>>(filePath));
+        }
+
+        ArgumentsList->push_back(x);
+        ArgumentsList->push_back(y);
+    }
+
+    // 需要异步的函数
+    std::any ExpShowContextMenu::PromiseWorkFunc(std::vector<std::any> *arguments_list)
+    {
+        std::any result = std::any();
+        HWND hwnd = std::any_cast<HWND>(arguments_list->at(0));
+
+        int x = std::any_cast<int>(arguments_list->at(2));
+        int y = std::any_cast<int>(arguments_list->at(3));
+
+        if (arguments_list->at(1).type() == typeid(std::wstring))
+        {
+            std::wstring filePath = std::any_cast<std::wstring>(arguments_list->at(1));
+            result = hmc_shell_util::showContextMenu(hwnd, filePath, x, y);
+        }
+
+        if (arguments_list->at(1).type() == typeid(std::vector<std::wstring>))
+        {
+            std::vector<std::wstring> filePathList = std::any_cast<std::vector<std::wstring>>(arguments_list->at(1));
+            result = hmc_shell_util::showContextMenu(hwnd, filePathList, x, y);
+        }
+
+        return result;
+    }
+
+    // 格式化<需要异步的函数>返回值到js 返回值
+    napi_value ExpShowContextMenu::FormatResultValue(napi_env env, std::any *result_any_data)
+    {
+        napi_value result;
+        napi_get_null(env, &result);
+
+        if (!result_any_data->has_value())
+        {
+            return result;
+        }
+        result = as_Boolean(std::any_cast<bool>(result_any_data));
+        return result;
+    }
+
+};
+
+
+
+*/

@@ -1045,7 +1045,7 @@ std::vector<std::wstring> hmc_shell_util::Symlink::getHardLinkList(const std::ws
                     temp.push_back(it);
             }
 
-            temp.push_back(L'\0');
+            // temp.push_back(L'\0');
 
             hardLinks.push_back(temp);
         }

@@ -1821,7 +1821,7 @@ napi_value hmc_napi_create_value::Buffer(napi_env env, std::vector<unsigned char
 
         ::memcpy(yourPointer, buffer.data(), buffer.size());
 
-        status = napi_create_external_buffer(env, buffer.size(), reinterpret_cast<void *>(buffer.data()), BufferFinalizer, reinterpret_cast<void *>(buffer.data()), &Results);
+        status = napi_create_external_buffer(env, buffer.size(), reinterpret_cast<void *>(yourPointer), BufferFinalizer, reinterpret_cast<void *>(yourPointer), &Results);
         if (status != napi_ok)
         {
             return NULL;
